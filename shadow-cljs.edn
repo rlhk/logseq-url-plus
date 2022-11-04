@@ -1,0 +1,30 @@
+;; shadow-cljs configuration
+{:source-paths ["src/dev" "src/main" "src/test"]
+ :dependencies
+ [[funcool/promesa "9.0.489"]
+  [binaryage/devtools "1.0.6"]
+  [funcool/cuerdas "2022.03.27-397"]]
+ :dev-http {8080 "dist"}
+ :nrepl {:port 8702
+         :init-ns core}
+ :compiler-options {:infer-externs      :auto
+                    :output-feature-set :es-next
+                    :source-map         true
+                    :source-map-detail-level :all
+                    :warnings           {:fn-deprecated false}}
+ :builds
+ {:plugin {:target :browser
+           :module-loader true
+           :output-dir "dist"
+           :modules  {:index {:init-fn core/init!}}
+           :devtools {:preloads [devtools.preload]
+                      :after-load core/reload!
+                      :repl-pprint true}
+           :dev {}
+           :release {:compiler-options {:optimizations :simple}}}
+           ; default :advanced optimization not yet working
+  :test {:target    :node-test ; simple TDD than browser-test dependency setup
+         :output-to "out/node-test.js"
+         :ns-regexp "-spec$"
+         :autorun   true
+         :devtools  {:repl-pprint true}}}}
