@@ -31,3 +31,16 @@ This shadow-cljs project is created by following: https://github.com/thheller/sh
    - To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
 
    > **NOTE:** Test Driven Development (TDD) setup runs on Node.js runtime.
+
+### Marketplace Submission
+
+- Read [Official README](https://github.com/logseq/marketplace/blob/master/README.md)
+- Create version tag
+  `git tag -a <version-no> -m "<version-no>"`
+  `git push origin <version-no>`
+- Fork `https://github.com/logseq/marketplace`
+- Update files in `https://github.com/rlhk/marketplace/tree/master/packages/logseq-url-plus`
+- Create pull request (PR)
+
+### TODO
+- [ ] shadow-cljs advanced compilation for release bundle 

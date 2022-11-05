@@ -15,7 +15,7 @@ Retreives metadata or API response of a valid URL, formats and rewrites the acti
 - `URL+ API -> EDN Code`
 - `URL+ API -> JSON Code`
 
-## Why another URL formatter?
+## Why Another URL Formatter?
 
 - Prefer slash command `/` over autoformat
 - Need more formatting with templates beyond `[title](url)`. Customizable templates in plan
@@ -23,9 +23,9 @@ Retreives metadata or API response of a valid URL, formats and rewrites the acti
 - Presist URL metadata or API response in graph
 - Learn Logseq plugin dev in ClojureScript (most plugins are written in JS/TS, if not all)
 
-## Plugin dev in ClojureScript
+## Plugin Devevelopment in ClojureScript
 
-See [cljs-dev-notes.md](./doc/cljs-dev-notes.md) for technical notes.
+See [dev-notes.md](./doc/dev-notes.md) for technical notes.
 
 ## Prior Arts and Reference Plugins
 - https://github.com/logseq/logseq-plugin-samples (official sample)
