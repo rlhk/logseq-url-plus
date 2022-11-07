@@ -1,6 +1,8 @@
 # URL+ Plugin for Logseq
 
-Retreives metadata or API response of a valid URL, formats and rewrites the active block with various templates.
+URL+ is a [Logseq](https://logseq.com) plugin written in [ClojureScript](https://clojurescript.org) with [shadow-cljs](https://github.com/thheller/shadow-cljs) as the main tooling.
+
+The plugin assumes the last term of the active Logseq block to be a valid URL. It then tries to retreive the metadata or API response from that URL; formats and rewrites the URL with various templates.
 
 ![demo](demo.gif)
 
@@ -18,10 +20,10 @@ Retreives metadata or API response of a valid URL, formats and rewrites the acti
 ## Why Another URL Formatter?
 
 - Prefer slash command `/` over autoformat
-- Need more formatting with templates beyond `[title](url)`. Customizable templates in plan
+- Need more formatting templates beyond the default `[title](url)`. Customizable templates in plan
 - Works for block with multiple terms and even multiline block too. The plugin only considers the last term in the block
 - Presist URL metadata or API response in graph
-- Learn Logseq plugin dev in ClojureScript (most plugins are written in JS/TS, if not all)
+- Learn Logseq plugin dev in ClojureScript (most plugins today are written in JS/TS, if not all)
 
 ## Plugin Devevelopment in ClojureScript
 
