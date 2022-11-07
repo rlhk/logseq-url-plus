@@ -36,7 +36,7 @@
                :api-json    (js/JSON.stringify api-res nil 2) ; built-in prettify
                :api-attrs   (plugin/edn->logseq-attrs api-edn)
                :else        all-but-last}))))
-      (show-msg (str/fmt "\"%s\" not a valid URL!" maybe-url)))))
+      (show-msg (str/fmt "\"%s\" doesn't seem to be a valid URL!" maybe-url)))))
 
 (def command-set
   {

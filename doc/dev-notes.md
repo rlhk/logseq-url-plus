@@ -34,7 +34,7 @@ This shadow-cljs project is created by following: https://github.com/thheller/sh
 
 ### Marketplace Submission
 
-- Read [Official README](https://github.com/logseq/marketplace/blob/master/README.md)
+- [Official Marketplace README](https://github.com/logseq/marketplace/blob/master/README.md)
 - Create version tag
   `git tag -a <version-no> -m "<version-no>"`
   `git push origin <version-no>`
@@ -43,4 +43,4 @@ This shadow-cljs project is created by following: https://github.com/thheller/sh
 - Create pull request (PR)
 
 ### TODO
-- [ ] shadow-cljs advanced compilation for release bundle 
+- [x] shadow-cljs advanced compilation for optimizing release bundle size

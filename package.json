@@ -1,7 +1,7 @@
 {
   "name": "logseq-url-plus",
-  "version": "0.0.1",
-  "description": "Retreive metadata or API response a valid URL and format with various templates.",
+  "version": "0.0.2",
+  "description": "Retreive metadata or API response of a valid URL; then format with various templates.",
   "author": "https://github.com/rlhk",
   "main": "./dist/index.html",
   "license": "MIT",
