@@ -6,16 +6,14 @@
     [plugin :refer [ednize]]
     ["link-preview-js" :as link-preview]))
 
-(def ui js/logseq.UI)
 (def editor js/logseq.Editor)
-
-(defn show-msg [msg]
-  (ui.showMsg msg))
+(def show-msg js/logseq.UI.showMsg)
 
 (defn rewrite-block [template]
   (show-msg "Rewriting block ...")
-  (p/let [block (.getCurrentBlock editor)
-          block-content (.getEditingBlockContent editor)
+  (p/let [block (js/logseq.Editor.getCurrentBlock)
+          block-uuid (aget block "uuid")
+          block-content (js/logseq.Editor.getEditingBlockContent)
           [all-but-last maybe-url] (plugin/else-and-last block-content)]
     (if (plugin/url? maybe-url)
       (do
@@ -23,21 +21,21 @@
         (p/let [meta-res (.getLinkPreview link-preview maybe-url)
                 meta-edn (ednize meta-res)
                 api-res  (-> (p/promise (js/fetch maybe-url))
-                             (p/then #(.json %))
+                             (p/then  #(.json %))
                              (p/catch #(js/console.log %)))
                 api-edn  (ednize api-res)]
-          (.updateBlock editor block.uuid
+          (js/logseq.Editor.updateBlock block-uuid
             (str/fmt template
-              {:url   maybe-url
-               :title (:title meta-edn)
+              {:url         maybe-url
+               :title       (:title meta-edn)
                :description (:description meta-edn)
-               :meta-edn  (with-out-str (pprint meta-edn))
-               :meta-json (js/JSON.stringify meta-res nil 1)
-               :meta-attrs (plugin/edn->logseq-attrs meta-edn)
-               :api-edn   (-> api-res ednize pprint with-out-str)
-               :api-json  (js/JSON.stringify api-res nil 2) ; built-in prettify
-               :api-attrs (plugin/edn->logseq-attrs api-edn)
-               :else all-but-last}))))
+               :meta-edn    (with-out-str (pprint meta-edn))
+               :meta-json   (js/JSON.stringify meta-res nil 1)
+               :meta-attrs  (plugin/edn->logseq-attrs meta-edn)
+               :api-edn     (-> api-res ednize pprint with-out-str)
+               :api-json    (js/JSON.stringify api-res nil 2) ; built-in prettify
+               :api-attrs   (plugin/edn->logseq-attrs api-edn)
+               :else        all-but-last}))))
       (show-msg (str/fmt "\"%s\" not a valid URL!" maybe-url)))))
 
 (def command-set
@@ -68,14 +66,14 @@
 
 (defn main []
   (doseq [[cmd template] command-set]
-    (.registerSlashCommand editor, cmd, #(rewrite-block template)))
+    (js/logseq.Editor.registerSlashCommand cmd, #(rewrite-block template)))
   (show-msg "URL+ loaded ..."))
 
 ; Standard logseq startup
 ; JS equivalent: logseq.ready(main).catch(() => console.error)
 (defn init! []
   (println "... core.init!")
-  (-> (p/promise (.ready js/logseq))
+  (-> (p/promise (js/logseq.ready))
       (p/then main)
       (p/catch #(js/console.error))))
 

@@ -1,7 +1,7 @@
 ;; shadow-cljs configuration
 {:source-paths ["src/dev" "src/main" "src/test"]
  :dependencies
- [[funcool/promesa "9.0.489"]
+ [[funcool/promesa "9.0.507"]
   [binaryage/devtools "1.0.6"]
   [funcool/cuerdas "2022.03.27-397"]]
  :dev-http {8080 "dist"}
@@ -21,8 +21,7 @@
                       :after-load core/reload!
                       :repl-pprint true}
            :dev {}
-           :release {:compiler-options {:optimizations :simple}}}
-           ; default :advanced optimization not yet working
+           :release {:compiler-options {:optimizations :advanced}}}
   :test {:target    :node-test ; simple TDD than browser-test dependency setup
          :output-to "out/node-test.js"
          :ns-regexp "-spec$"
