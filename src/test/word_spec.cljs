@@ -1,61 +1,9 @@
 (ns word-spec
   (:require
     [cljs.test :refer [deftest is are testing]]
-    [plugin]
     [word :as w]))
 
-(def word-1
-  [{:word "procrastination",
-    :phonetic "/pɹəʊˌkɹæs.tɪˈneɪ.ʃən/",
-    :phonetics
-    [{:text "/pɹəʊˌkɹæs.tɪˈneɪ.ʃən/", :audio ""}
-     {:text "/-ʃn̩/",
-      :audio
-      "https://api.dictionaryapi.dev/media/pronunciations/en/procrastination-us.mp3",
-      :sourceUrl
-      "https://commons.wikimedia.org/w/index.php?curid=1217796",
-      :license
-      {:name "BY-SA 3.0",
-       :url "https://creativecommons.org/licenses/by-sa/3.0",}}]
-    :meanings
-    [{:partOfSpeech "noun",
-      :definitions
-      [{:definition
-        "The act of postponing, delaying or putting off, especially habitually or intentionally.",
-        :synonyms [],
-        :antonyms []}],
-      :synonyms ["deferral" "prolongation"],
-      :antonyms ["precrastination"]}],
-    :license
-    {:name "CC BY-SA 3.0",
-     :url "https://creativecommons.org/licenses/by-sa/3.0",}
-    :sourceUrls ["https://en.wiktionary.org/wiki/procrastination"]}])
-
-(def partial-word
-  {:partOfSpeech "noun",
-    :definitions
-    [{:definition "The act of killing.",
-      :synonyms [],
-      :antonyms [],
-      :example
-      "The assassin liked to make a clean kill, and thus favored small arms over explosives."}
-     {:definition "Specifically, the death blow.",
-      :synonyms [],
-      :antonyms [],
-      :example
-      "The hunter delivered the kill with a pistol shot to the head."}
-     {:definition "The result of killing; that which has been killed.",
-      :synonyms [],
-      :antonyms [],
-      :example "The fox dragged its kill back to its den."}
-     {:definition
-      "The grounding of the ball on the opponent's court, winning the rally.",
-      :synonyms [],
-      :antonyms []}],
-    :synonyms [],
-    :antonyms []})
-
-(def word-dog
+(def sample-word-api-edn
   [{:word "dog",
     :phonetic "/dɑɡ/",
     :phonetics
@@ -92,58 +40,7 @@
        {:definition
         "A male dog, wolf or fox, as opposed to a bitch or vixen.",
         :synonyms [],
-        :antonyms []}
-       {:definition "A dull, unattractive girl or woman.",
-        :synonyms [],
-        :antonyms [],
-        :example "She’s a real dog."}
-       {:definition "A man (derived from definition 2).",
-        :synonyms [],
-        :antonyms [],
-        :example "He's a silly dog."}
-       {:definition "A coward.",
-        :synonyms [],
-        :antonyms [],
-        :example "Come back and fight, you dogs!"}
-       {:definition "Someone who is morally reprehensible.",
-        :synonyms [],
-        :antonyms [],
-        :example "You dirty dog."}
-       {:definition "A sexually aggressive man (cf. horny).",
-        :synonyms [],
-        :antonyms []}
-       {:definition
-        "Any of various mechanical devices for holding, gripping, or fastening something, particularly with a tooth-like projection.",
-        :synonyms [],
-        :antonyms []}
-       {:definition
-        "A click or pallet adapted to engage the teeth of a ratchet-wheel, to restrain the back action; a click or pawl. (See also: ratchet, windlass)",
-        :synonyms [],
-        :antonyms []}
-       {:definition "A metal support for logs in a fireplace.",
-        :synonyms [],
-        :antonyms [],
-        :example "The dogs were too hot to touch."}
-       {:definition "The eighteenth Lenormand card.",
-        :synonyms [],
-        :antonyms []}
-       {:definition "A hot dog.", :synonyms [], :antonyms []}
-       {:definition "Underdog.", :synonyms [], :antonyms []}
-       {:definition "(almost always in the plural) Foot.",
-        :synonyms [],
-        :antonyms []}
-       {:definition "(from \"dog and bone\") Phone or mobile phone.",
-        :synonyms [],
-        :antonyms [],
-        :example "My dog is dead."}
-       {:definition
-        "One of the cones used to divide up a racetrack when training horses.",
-        :synonyms [],
-        :antonyms []}
-       {:definition
-        "A flop; a film that performs poorly at the box office.",
-        :synonyms [],
-        :antonyms []}],
+        :antonyms []}]
       :synonyms
       ["Canis canis"
        "Canis domesticus"
@@ -239,8 +136,25 @@
     ["https://en.wiktionary.org/wiki/dog"
      "https://en.wiktionary.org/wiki/dog%20meat"]}])
 
-(deftest compact-def
-  (is (= "**NOUN** **1.** The act of killing. **2.** Specifically, the death blow. **3.** The result of killing; that which has been killed. **4.** The grounding of the ball on the opponent's court, winning the rally."
-         (w/pos-group partial-word)))
-  (is (= "**NOUN** **1.** A mammal, Canis familiaris or Canis lupus familiaris, that has been domesticated for thousands of years, of highly variable appearance due to human breeding. **2.** Any member of the Family Canidae, including domestic dogs, wolves, coyotes, jackals, foxes, and their relatives (extant and extinct); canid. **3.** A male dog, wolf or fox, as opposed to a bitch or vixen. **4.** A dull, unattractive girl or woman. **5.** A man (derived from definition 2). **6.** A coward. **7.** Someone who is morally reprehensible. **8.** A sexually aggressive man (cf. horny). **9.** Any of various mechanical devices for holding, gripping, or fastening something, particularly with a tooth-like projection. **10.** A click or pallet adapted to engage the teeth of a ratchet-wheel, to restrain the back action; a click or pawl. (See also: ratchet, windlass) **11.** A metal support for logs in a fireplace. **12.** The eighteenth Lenormand card. **13.** A hot dog. **14.** Underdog. **15.** (almost always in the plural) Foot. **16.** (from \"dog and bone\") Phone or mobile phone. **17.** One of the cones used to divide up a racetrack when training horses. **18.** A flop; a film that performs poorly at the box office.; **VERB** **1.** To pursue with the intent to catch. **2.** To follow in an annoying or harassing way. **3.** To fasten a hatch securely. **4.** To watch, or participate, in sexual activity in a public place. **5.** To intentionally restrict one's productivity as employee; to work at the slowest rate that goes unpunished. **6.** To criticize. **7.** To divide (a watch) with a comrade.; **NOUN** **1.** Meat from a dog eaten as food. **2.** Meat prepared to be given to a dog as food. **3.** An insult intended to assert hyperbolically that another person has value only as a corpse to be fed to a dog."
-         (w/compact-def word-dog))))
+(def sample-phonetics
+  (->> sample-word-api-edn
+       first
+       :phonetics))
+
+(def sample-part-of-speech
+  (->> sample-word-api-edn
+       first
+       :meanings
+       first))
+
+(deftest format-phonetics
+  (is (= "[/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3)"
+         (w/fmt-phonetic (second sample-phonetics))))
+  (is (= "**1.** [/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3) **2.** [/dɔɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-us.mp3)"
+         (w/fmt-phonetics sample-phonetics))))
+
+(deftest format-part-of-speech
+  (is (= "【noun】 **1.** A mammal, Canis familiaris or Canis lupus familiaris, that has been domesticated for thousands of years, of highly variable appearance due to human breeding. **2.** Any member of the Family Canidae, including domestic dogs, wolves, coyotes, jackals, foxes, and their relatives (extant and extinct); canid. **3.** A male dog, wolf or fox, as opposed to a bitch or vixen."
+         (w/fmt-part-of-speech sample-part-of-speech)))
+  (is (= "**1.** [/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3) **2.** [/dɔɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-us.mp3); 【noun】 **1.** A mammal, Canis familiaris or Canis lupus familiaris, that has been domesticated for thousands of years, of highly variable appearance due to human breeding. **2.** Any member of the Family Canidae, including domestic dogs, wolves, coyotes, jackals, foxes, and their relatives (extant and extinct); canid. **3.** A male dog, wolf or fox, as opposed to a bitch or vixen.; 【verb】 **1.** To pursue with the intent to catch. **2.** To follow in an annoying or harassing way. **3.** To fasten a hatch securely. **4.** To watch, or participate, in sexual activity in a public place. **5.** To intentionally restrict one's productivity as employee; to work at the slowest rate that goes unpunished. **6.** To criticize. **7.** To divide (a watch) with a comrade.; 【noun】 **1.** Meat from a dog eaten as food. **2.** Meat prepared to be given to a dog as food. **3.** An insult intended to assert hyperbolically that another person has value only as a corpse to be fed to a dog."
+         (w/compact-def sample-word-api-edn))))

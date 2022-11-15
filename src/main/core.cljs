@@ -78,8 +78,8 @@
    {:desc "URL+ API -> JSON Code"
     :template "%(else)s %(url)s\n```json\n%(api-json)s\n```"
     :type :api}
-   {:desc "URL+ Compact Definition"
-    :template "%(else)s <h2>%(word)s</h2> %(word-def)s"
+   {:desc "URL+ Word Definition"
+    :template "%(else)s %(word)s %(word-def)s"
     :type :api/word}])
 
 (defn main []
