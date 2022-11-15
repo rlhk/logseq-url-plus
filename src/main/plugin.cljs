@@ -44,4 +44,4 @@
         
         ))
 (defn pos-g [group]
-    (mapv str (iterate inc 1) (map #(get % :definition)group)))
+    (mapv str (iterate inc 1) (map #(get % :definition) group)))
