@@ -32,16 +32,3 @@
     (str
       (when warning (str "#+BEGIN_WARNING\n" warning "\n#+END_WARNING\n"))
       (str/join "\n" (for [[k v] m] (str (name k) ":: " v))))))
-
-(defn condensed-def [data]
-  (-> (get-in data [0 :meanings 0]) 
-      ((juxt :partOfSpeech #(get-in % [:definitions 0 :definition])))))
-
-(defn unabridged-word [data]
-  (let [sound     (get-in data [:phonetic])
-        meanings  (get-in data [:meanings])]
-        (-> (map data))        
-        
-        ))
-(defn pos-g [group]
-    (mapv str (iterate inc 1) (map #(get % :definition) group)))
