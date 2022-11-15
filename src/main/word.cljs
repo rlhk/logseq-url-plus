@@ -4,7 +4,7 @@
 
 (defn pos-group [group]
   (let [meanings (->> group :definitions (map :definition))
-        pos (:partOfSpeech group)]
+        pos (-> (:partOfSpeech group) str/upper)]
     (str
       (str/fmt "**%s** " pos)
       (str/join " "
