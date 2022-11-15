@@ -42,7 +42,7 @@
     (js/logseq.Editor.updateBlock block-id
       (str/fmt template
         { :word         word
-          :api-def     (->> api-res ednize plugin/condensed-def (str/join " "))
+          :api-def     (->> api-res ednize plugin/condensed-def (str/join ": "))
           :else        not-last}))))
 
 (defn rewrite-block [templates]
@@ -82,7 +82,7 @@
    "%(else)s %(url)s\n```json\n%(api-json)s\n```"
    
    "URL+ Compact Definitions"
-   "%(else)s %(word)s %(api-def)s"})
+   "%(else)s <h1> %(word)s </h1> <code> %(api-def)s </code>"})
 
 (defn main []
   (doseq [[cmd template] command-set]
