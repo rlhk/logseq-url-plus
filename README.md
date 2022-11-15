@@ -16,6 +16,7 @@ The plugin assumes the last term of the active Logseq block to be a valid URL. I
 - `URL+ API -> Logseq Attributes`
 - `URL+ API -> EDN Code`
 - `URL+ API -> JSON Code`
+- `URL+ Compact Definitions`
 
 ## Why Another URL Formatter?
 
