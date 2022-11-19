@@ -3,7 +3,7 @@
     [cljs.test :refer [deftest is are testing]]
     [word :as w]))
 
-(def sample-word-api-edn
+(def sample-word-1
   [{:word "dog",
     :phonetic "/dɑɡ/",
     :phonetics
@@ -136,25 +136,63 @@
     ["https://en.wiktionary.org/wiki/dog"
      "https://en.wiktionary.org/wiki/dog%20meat"]}])
 
-(def sample-phonetics
-  (->> sample-word-api-edn
+(def sample-phonetics-1
+  (->> sample-word-1
        first
        :phonetics))
 
-(def sample-part-of-speech
-  (->> sample-word-api-edn
+(def sample-part-of-speech-1
+  (->> sample-word-1
        first
        :meanings
        first))
 
+(def sample-word-2
+  [{:word "prodigy",
+    :phonetic "/ˈpɹɒdɪdʒi/",
+    :phonetics
+    [{:text "/ˈpɹɒdɪdʒi/", :audio ""} {:text "/ˈpɹɑdɪdʒi/", :audio ""}],
+    :meanings
+    [{:partOfSpeech "noun",
+      :definitions
+      [{:definition "An extraordinary thing seen as an omen; a portent.",
+        :synonyms [],
+        :antonyms []}
+       {:definition
+        "An extraordinary occurrence or creature; an anomaly, especially a monster; a freak.",
+        :synonyms [],
+        :antonyms []}
+       {:definition "An amazing or marvellous thing; a wonder.",
+        :synonyms [],
+        :antonyms []}
+       {:definition "A wonderful example of something.",
+        :synonyms [],
+        :antonyms []}
+       {:definition "An extremely talented person, especially a child.",
+        :synonyms [],
+        :antonyms []}],
+      :synonyms ["boy wonder" "child prodigy" "wunderkind"],
+      :antonyms []}],
+    :license
+    {:name "CC BY-SA 3.0",
+     :url "https://creativecommons.org/licenses/by-sa/3.0"},
+    :sourceUrls ["https://en.wiktionary.org/wiki/prodigy"]}])
+
+(def sample-phonetics-2
+  (->> sample-word-2
+       first
+       :phonetics))
+
 (deftest format-phonetics
   (is (= "[/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3)"
-         (w/fmt-phonetic (second sample-phonetics))))
-  (is (= "**1.** [/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3) **2.** [/dɔɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-us.mp3)"
-         (w/fmt-phonetics sample-phonetics))))
+         (w/fmt-phonetic (second sample-phonetics-1))))
+  (is (= "**1.** /dɑɡ/ **2.** [/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3) **3.** [/dɔɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-us.mp3) **4.** /dɑɡ/"
+         (w/fmt-phonetics sample-phonetics-1)))
+  (is (= "**1.** /ˈpɹɒdɪdʒi/ **2.** /ˈpɹɑdɪdʒi/"
+         (w/fmt-phonetics sample-phonetics-2))))
 
 (deftest format-part-of-speech
   (is (= "【noun】 **1.** A mammal, Canis familiaris or Canis lupus familiaris, that has been domesticated for thousands of years, of highly variable appearance due to human breeding. **2.** Any member of the Family Canidae, including domestic dogs, wolves, coyotes, jackals, foxes, and their relatives (extant and extinct); canid. **3.** A male dog, wolf or fox, as opposed to a bitch or vixen."
-         (w/fmt-part-of-speech sample-part-of-speech)))
-  (is (= "**1.** [/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3) **2.** [/dɔɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-us.mp3); 【noun】 **1.** A mammal, Canis familiaris or Canis lupus familiaris, that has been domesticated for thousands of years, of highly variable appearance due to human breeding. **2.** Any member of the Family Canidae, including domestic dogs, wolves, coyotes, jackals, foxes, and their relatives (extant and extinct); canid. **3.** A male dog, wolf or fox, as opposed to a bitch or vixen.; 【verb】 **1.** To pursue with the intent to catch. **2.** To follow in an annoying or harassing way. **3.** To fasten a hatch securely. **4.** To watch, or participate, in sexual activity in a public place. **5.** To intentionally restrict one's productivity as employee; to work at the slowest rate that goes unpunished. **6.** To criticize. **7.** To divide (a watch) with a comrade.; 【noun】 **1.** Meat from a dog eaten as food. **2.** Meat prepared to be given to a dog as food. **3.** An insult intended to assert hyperbolically that another person has value only as a corpse to be fed to a dog."
-         (w/compact-def sample-word-api-edn))))
+         (w/fmt-part-of-speech sample-part-of-speech-1)))
+  (is (= "**1.** /ˈpɹɒdɪdʒi/ **2.** /ˈpɹɑdɪdʒi/; 【noun】 **1.** An extraordinary thing seen as an omen; a portent. **2.** An extraordinary occurrence or creature; an anomaly, especially a monster; a freak. **3.** An amazing or marvellous thing; a wonder. **4.** A wonderful example of something. **5.** An extremely talented person, especially a child."
+         (w/compact-word-def sample-word-2))))

@@ -1,7 +1,7 @@
 {
   "name": "logseq-url-plus",
-  "version": "0.0.2",
-  "description": "Retreive metadata or API response of a valid URL; then format with various templates.",
+  "version": "0.0.3",
+  "description": "Retreive metadata or API response from a valid URL; then format with various templates.",
   "author": "https://github.com/rlhk",
   "main": "./dist/index.html",
   "license": "MIT",
@@ -14,11 +14,11 @@
   },
   "scripts": {
     "dev": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs watch :plugin :test",
-    "release": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs release :plugin",
+    "compile": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs release :plugin",
     "test": "npx shadow-cljs watch :test"
   },
   "devDependencies": {
-    "shadow-cljs": "2.20.5"
+    "shadow-cljs": "2.20.12"
   },
   "dependencies": {
     "link-preview-js": "^3.0.4"

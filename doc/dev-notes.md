@@ -42,5 +42,13 @@ This shadow-cljs project is created by following: https://github.com/thheller/sh
 - Update files in `https://github.com/rlhk/marketplace/tree/master/packages/logseq-url-plus`
 - Create pull request (PR)
 
-### TODO
-- [x] shadow-cljs advanced compilation for optimizing release bundle size
+### TODOs
+- [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
+- [ ] Move logseq/libs from index.html to ns require when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061
+
+### Prior Arts and Reference Plugins
+- https://github.com/logseq/logseq-plugin-samples (official sample)
+- https://github.com/pengx17/logseq-plugin-link-preview
+- https://github.com/0x7b1/logseq-plugin-automatic-url-title
+- https://github.com/superman66/logseq-plugin-url-md (not recommended by author)
+- https://github.com/trashhalo/logseq-dictionary

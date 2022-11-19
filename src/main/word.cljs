@@ -3,11 +3,13 @@
     [cuerdas.core :as str]))
 
 (defn fmt-phonetic [phonetic]
-  (str/fmt "[%(text)s](%(audio)s)" phonetic))
+  (if (str/blank? (:audio phonetic))
+    (str/fmt "%(text)s" phonetic)
+    (str/fmt "[%(text)s](%(audio)s)" phonetic)))
 
 (defn fmt-phonetics [phonetics]
   (->> phonetics
-       (remove #(str/blank? (:audio %)))
+       ; (remove #(str/blank? (:audio %)))
        (map fmt-phonetic)
        (map-indexed #(str/fmt "**%s.** %s" (inc %1) %2))
        (str/join " ")))
@@ -21,7 +23,7 @@
         (->> meanings
              (map-indexed #(str/fmt "**%s.** %s", (inc %1), %2)))))))
 
-(defn compact-def [api-edn]
+(defn compact-word-def [api-edn]
   (let [word (first api-edn)
         phonetics
         (->> word :phonetics
@@ -30,4 +32,4 @@
         (->> word :meanings
              (map fmt-part-of-speech)
              (str/join "; "))]
-    (str phonetics "; " pos)))
+    (str/join "; " (remove #(str/blank? %) [phonetics pos]))))

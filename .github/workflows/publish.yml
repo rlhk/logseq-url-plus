@@ -24,7 +24,7 @@ jobs:
         run: |
           npm install -g yarn
           yarn
-          yarn release
+          yarn compile
           mkdir ${{ env.PLUGIN_NAME }}
           cp package.json README.md demo.gif ${{ env.PLUGIN_NAME }}
           mv dist ${{ env.PLUGIN_NAME }}
