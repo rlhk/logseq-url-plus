@@ -1,7 +1,7 @@
-(ns word-spec
+(ns dict-spec
   (:require
     [cljs.test :refer [deftest is are testing]]
-    [word :as w]))
+    [dict :as d]))
 
 (def sample-word-1
   [{:word "dog",
@@ -137,15 +137,15 @@
      "https://en.wiktionary.org/wiki/dog%20meat"]}])
 
 (def sample-phonetics-1
-  (->> sample-word-1
-       first
-       :phonetics))
+  (-> sample-word-1
+      first
+      :phonetics))
 
 (def sample-part-of-speech-1
-  (->> sample-word-1
-       first
-       :meanings
-       first))
+  (-> sample-word-1
+      first
+      :meanings
+      first))
 
 (def sample-word-2
   [{:word "prodigy",
@@ -179,20 +179,20 @@
     :sourceUrls ["https://en.wiktionary.org/wiki/prodigy"]}])
 
 (def sample-phonetics-2
-  (->> sample-word-2
-       first
-       :phonetics))
+  (-> sample-word-2
+      first
+      :phonetics))
 
 (deftest format-phonetics
   (is (= "[/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3)"
-         (w/fmt-phonetic (second sample-phonetics-1))))
+         (d/fmt-phonetic (second sample-phonetics-1))))
   (is (= "**1.** /dɑɡ/ **2.** [/dɒɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-uk.mp3) **3.** [/dɔɡ/](https://api.dictionaryapi.dev/media/pronunciations/en/dog-us.mp3) **4.** /dɑɡ/"
-         (w/fmt-phonetics sample-phonetics-1)))
+         (d/fmt-phonetics sample-phonetics-1)))
   (is (= "**1.** /ˈpɹɒdɪdʒi/ **2.** /ˈpɹɑdɪdʒi/"
-         (w/fmt-phonetics sample-phonetics-2))))
+         (d/fmt-phonetics sample-phonetics-2))))
 
 (deftest format-part-of-speech
   (is (= "【noun】 **1.** A mammal, Canis familiaris or Canis lupus familiaris, that has been domesticated for thousands of years, of highly variable appearance due to human breeding. **2.** Any member of the Family Canidae, including domestic dogs, wolves, coyotes, jackals, foxes, and their relatives (extant and extinct); canid. **3.** A male dog, wolf or fox, as opposed to a bitch or vixen."
-         (w/fmt-part-of-speech sample-part-of-speech-1)))
+         (d/fmt-part-of-speech sample-part-of-speech-1)))
   (is (= "**1.** /ˈpɹɒdɪdʒi/ **2.** /ˈpɹɑdɪdʒi/; 【noun】 **1.** An extraordinary thing seen as an omen; a portent. **2.** An extraordinary occurrence or creature; an anomaly, especially a monster; a freak. **3.** An amazing or marvellous thing; a wonder. **4.** A wonderful example of something. **5.** An extremely talented person, especially a child."
-         (w/compact-word-def sample-word-2))))
+         (d/fmt-definition sample-word-2))))

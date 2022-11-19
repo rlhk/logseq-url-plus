@@ -4,7 +4,7 @@
     [cuerdas.core :as str]
     [clojure.pprint :refer [pprint]]
     [plugin :refer [ednize]]
-    [word :refer [compact-word-def]]
+    [dict :refer [fmt-definition]]
     ["link-preview-js" :as link-preview]))
 
 (def editor js/logseq.Editor)
@@ -17,8 +17,8 @@
           [all-but-last, last-term] (plugin/else-and-last block-content)
           url
           (cond ; we may have other types in the future
-            (= type :api/word-def) (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
-            (= type :word-linked)  (str "https://en.wiktionary.org/wiki/" last-term)
+            (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
+            (= type :link/define) (str "https://en.wiktionary.org/wiki/" last-term)
             :else last-term)]
     (if (plugin/url? url)
       (do
@@ -26,38 +26,27 @@
         (p/let [url-res  (.getLinkPreview link-preview url)
                 meta-edn (ednize url-res)
                 api-res  (-> (p/promise (js/fetch url))
-                             (p/then  #(.json %))
-                             (p/catch #(js/console.log %)))
+                             (p/then   #(.json %))
+                             (p/catch  #(js/console.log %)))
                 api-edn  (ednize api-res)
-                template-attrs
-                (cond
-                  (= type :api/word-def)
-                  {:word     last-term
-                   :word-def (->> api-res ednize compact-word-def)
-                   :but-last all-but-last}
-
-                  (= type :word-linked)
-                  {:url      url
-                   :word     last-term
-                   :but-last all-but-last}
-
-                  :else ; default command type
-                  {:url         url
-                   :title       (:title meta-edn)
-                   :description (:description meta-edn)
-                   :meta-edn    (with-out-str (pprint meta-edn))
-                   :meta-json   (js/JSON.stringify url-res nil 1)
-                   :meta-attrs  (plugin/edn->logseq-attrs meta-edn)
-                   :api-edn     (-> api-res ednize pprint with-out-str)
-                   :api-json    (js/JSON.stringify api-res nil 2) ; built-in prettify
-                   :api-attrs   (plugin/edn->logseq-attrs api-edn)
-                   :but-last    all-but-last})]
+                attrs    {:url         url
+                          :term        last-term
+                          :definition  (-> api-res ednize fmt-definition)
+                          :title       (:title meta-edn)
+                          :description (:description meta-edn)
+                          :meta-edn    (with-out-str (pprint meta-edn))
+                          :meta-json   (js/JSON.stringify url-res nil 2) ;built-in prettify
+                          :meta-attrs  (plugin/edn->logseq-attrs meta-edn)
+                          :api-edn     (-> api-res ednize pprint with-out-str)
+                          :api-json    (js/JSON.stringify api-res nil 2)
+                          :api-attrs   (plugin/edn->logseq-attrs api-edn)
+                          :but-last    all-but-last}]
           (show-msg "Formatting block(s) ...")
           (cond
-            (= type :api/word-def)
-            (js/logseq.Editor.insertBlock block-uuid, (str/fmt template template-attrs))
+            (= type :api/define)
+            (js/logseq.Editor.insertBlock block-uuid, (str/fmt template attrs))
             :else
-            (js/logseq.Editor.updateBlock block-uuid, (str/fmt template template-attrs)))))
+            (js/logseq.Editor.updateBlock block-uuid, (str/fmt template attrs)))))
       (show-msg (str/fmt "\"%s\" doesn't seem to be a valid URL!" last-term)))))
 
 (def commands
@@ -85,12 +74,12 @@
    {:desc "URL+ API -> JSON Code"
     :template "%(but-last)s %(url)s\n```json\n%(api-json)s\n```"
     :type :api}
-   {:desc "URL+ Insert Word Definition"
-    :template "%(word-def)s"
-    :type :api/word-def}
+   {:desc "URL+ Append Definition"
+    :template "%(definition)s"
+    :type :api/define}
    {:desc "URL+ Link Wiktionary URL"
-    :template "%(but-last)s [%(word)s](%(url)s)"
-    :type :word-linked}])
+    :template "%(but-last)s [%(term)s](%(url)s)"
+    :type :link/define}])
 
 (defn main []
   (doseq [{:keys [desc template type]} commands]

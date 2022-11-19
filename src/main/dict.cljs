@@ -1,4 +1,4 @@
-(ns word
+(ns dict
   (:require
     [cuerdas.core :as str]))
 
@@ -23,7 +23,7 @@
         (->> meanings
              (map-indexed #(str/fmt "**%s.** %s", (inc %1), %2)))))))
 
-(defn compact-word-def [api-edn]
+(defn fmt-definition [api-edn]
   (let [word (first api-edn)
         phonetics
         (->> word :phonetics
