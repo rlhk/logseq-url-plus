@@ -35,9 +35,11 @@ This shadow-cljs project is created by following: https://github.com/thheller/sh
 ### Marketplace Submission
 
 - [Official Marketplace README](https://github.com/logseq/marketplace/blob/master/README.md)
-- Create version tag
-  `git tag -a <version-no> -m "<version-no>"`
-  `git push origin <version-no>`
+- Create and push tag manually
+  `git tag -a <version-tag> -m "<version-tag>"`
+  `git push origin <version-tag>`
+- Use yarn script
+  `yarn release <version-tag> # e.g. yarn release 0.0.3`
 - Fork `https://github.com/logseq/marketplace`
 - Update files in `https://github.com/rlhk/marketplace/tree/master/packages/logseq-url-plus`
 - Create pull request (PR)

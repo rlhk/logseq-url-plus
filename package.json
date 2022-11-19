@@ -13,9 +13,10 @@
     "favicon": "dist/favicon.ico"
   },
   "scripts": {
+    "test": "npx shadow-cljs watch :test",
     "dev": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs watch :plugin :test",
     "compile": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs release :plugin",
-    "test": "npx shadow-cljs watch :test"
+    "release": "./scripts/release.sh"
   },
   "devDependencies": {
     "shadow-cljs": "2.20.12"
