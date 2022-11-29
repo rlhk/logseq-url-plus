@@ -70,6 +70,7 @@
     :template "```json\n%(meta-json)s\n```"}
    {:desc "URL+ API -> Logseq Attributes"
     :type :api
+    :mode :inline
     :template "%(but-last)s %(url)s\n%(api-attrs)s\n"}
    {:desc "URL+ API -> Logseq Attribute Blocks"
     :type :api
