@@ -3,6 +3,7 @@
  :dependencies
  [[funcool/promesa "9.0.507"]
   [binaryage/devtools "1.0.6"]
+  [medley "1.4.0"]
   [funcool/cuerdas "2022.03.27-397"]]
  :dev-http {8080 "dist"}
  :nrepl {:port 8702

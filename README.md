@@ -14,6 +14,7 @@ The plugin assumes the last term of the active Logseq block to be a valid URL. I
 - `URL+ Metadata -> EDN Code`
 - `URL+ Metadata -> JSON Code`
 - `URL+ API -> Logseq Attributes`
+- `URL+ API -> Logseq Attribute Blocks`
 - `URL+ API -> EDN Code`
 - `URL+ API -> JSON Code`
 - `URL+ Append Definition`

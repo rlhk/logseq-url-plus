@@ -1,20 +1,15 @@
 (ns plugin-spec
   (:require
-    [cljs.test :refer [deftest is are testing]]
-    [plugin]))
+   [cljs.test :refer [deftest is are]]
+   [plugin]))
 
 (deftest else-and-last
-  "Separate the last term from everything else"
-  (is (= ["" "world"]
-         (plugin/else-and-last "world")))
-  (is (= ["" "world"]
-         (plugin/else-and-last " world")))
-  (is (= ["hello good" "world"]
-         (plugin/else-and-last "hello good world")))
-  (is (= ["the new    fox is a red" "fox"]
-         (plugin/else-and-last "the new    fox is a red fox  ")))
-  (is (= [" The fox said:\n\r It's a new \n new" "hell!"]
-         (plugin/else-and-last " The fox said:\n\r It's a new \n new hell!"))))
+  (are [in out] (= (plugin/else-and-last in) out)
+    "world", ["" "world"]
+    " world", ["" "world"]
+    "hello good world", ["hello good" "world"]
+    "the new    fox is a red fox  ", ["the new    fox is a red" "fox"]
+    " The fox said:\n\r It's a new \n new hell!", [" The fox said:\n\r It's a new \n new" "hell!"]))
 
 (deftest check-url
   (is (= true (plugin/url? "http://abc.com")))
@@ -26,5 +21,24 @@
   (is (= false (plugin/url? "www.abc.com"))))
 
 (deftest formatting
-  (is (= "title:: Fox\ndescription:: The brown fox."
-         (plugin/edn->logseq-attrs {:title "Fox" :description "The brown fox."}))))
+  (are [in out] (= (plugin/edn->logseq-attrs in) out)
+    {:title "Fox" :description "The brown fox."}
+    "title:: Fox\ndescription:: The brown fox."))
+
+(deftest edn-to-logseq-blocks
+  (are [in out] (= (plugin/nested? in) out)
+    [] false
+    {} false
+    "" false
+    3  false
+    "A String" false
+    [:a :b] true
+    {:a :apple} true)
+  (are [in out] (= (plugin/attrs-and-children in) out)
+    {:o "O" :p "P" :c [{:c1 "C1"}] :d []}
+    [{:o "O" :p "P" :d []}, {:c [{:c1 "C1"}]}]
+
+    {:a "A" :b "B" :c [] :d []}
+    [{:a "A" :b "B" :c [] :d []}, {}])
+
+  )

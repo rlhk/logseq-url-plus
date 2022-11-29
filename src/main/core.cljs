@@ -7,10 +7,10 @@
     [dict :refer [fmt-definition]]
     ["link-preview-js" :as link-preview]))
 
-(def editor js/logseq.Editor)
 (def show-msg js/logseq.UI.showMsg)
 
-(defn rewrite-block [type template]
+(defn modify-block [{:keys [template type mode] 
+                     :or   {mode :child}}]
   (p/let [block         (js/logseq.Editor.getCurrentBlock)
           block-uuid    (aget block "uuid")
           block-content (js/logseq.Editor.getEditingBlockContent)
@@ -40,50 +40,57 @@
                           :api-edn     (-> api-res ednize pprint with-out-str)
                           :api-json    (js/JSON.stringify api-res nil 2)
                           :api-attrs   (plugin/edn->logseq-attrs api-edn)
+                          :api-blocks  (plugin/edn->logseq-blocks api-edn)
                           :but-last    all-but-last}]
           (show-msg "Formatting block(s) ...")
           (cond
-            (= type :api/define)
-            (js/logseq.Editor.insertBlock block-uuid, (str/fmt template attrs))
-            :else
-            (js/logseq.Editor.updateBlock block-uuid, (str/fmt template attrs)))))
+            (= mode :inline) (js/logseq.Editor.updateBlock block-uuid, (str/fmt template attrs))
+            (= mode :block)  (js/logseq.Editor.insertBatchBlock block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
+            :else (js/logseq.Editor.insertBlock block-uuid, (str/fmt template attrs)))))
       (show-msg (str/fmt "\"%s\" doesn't seem to be a valid URL!" last-term)))))
 
 (def commands
-  [{:desc "URL+ [title](url) description"
-    :template "%(but-last)s [%(title)s](%(url)s) %(description)s"
-    :type :meta}
-   {:desc "URL+ [title](url)"
-    :template "%(but-last)s [%(title)s](%(url)s)"
-    :type :meta}
+  [{:desc "URL+ [title](url)"
+    :type :meta ; response type
+    :mode :inline ; logseq block writting mode. Default :child
+    :template "%(but-last)s [%(title)s](%(url)s)"}
+   {:desc "URL+ [title](url) description"
+    :type :meta
+    :mode :inline
+    :template "%(but-last)s [%(title)s](%(url)s) %(description)s"}
    {:desc "URL+ Metadata -> Logseq Attributes"
-    :template "%(but-last)s %(url)s\n%(meta-attrs)s\n"
-    :type :meta}
+    :type :meta
+    :mode :inline
+    :template "%(but-last)s %(url)s\n%(meta-attrs)s\n"}
    {:desc "URL+ Metadata -> EDN Code"
-    :template "%(but-last)s %(url)s\n```edn\n%(meta-edn)s```"
-    :type :meta}
+    :type :meta
+    :template "```edn\n%(meta-edn)s```"}
    {:desc "URL+ Metadata -> JSON Code"
-    :template "%(but-last)s %(url)s\n```json\n%(meta-json)s\n```"
-    :type :meta}
+    :type :meta
+    :template "```json\n%(meta-json)s\n```"}
    {:desc "URL+ API -> Logseq Attributes"
-    :template "%(but-last)s %(url)s\n%(api-attrs)s\n"
-    :type :api}
+    :type :api
+    :template "%(but-last)s %(url)s\n%(api-attrs)s\n"}
+   {:desc "URL+ API -> Logseq Attribute Blocks"
+    :type :api
+    :mode :block}
    {:desc "URL+ API -> EDN Code"
-    :template "%(but-last)s %(url)s\n```edn\n%(api-edn)s```"
-    :type :api}
+    :type :api
+    :template "```edn\n%(api-edn)s```"}
    {:desc "URL+ API -> JSON Code"
-    :template "%(but-last)s %(url)s\n```json\n%(api-json)s\n```"
-    :type :api}
+    :type :api
+    :template "```json\n%(api-json)s\n```"}
    {:desc "URL+ Append Definition"
-    :template "%(definition)s"
-    :type :api/define}
+    :type :api/define
+    :template "%(definition)s"}
    {:desc "URL+ Link Wiktionary URL"
-    :template "%(but-last)s [%(term)s](%(url)s)"
-    :type :link/define}])
+    :type :link/define
+    :mode :inline
+    :template "%(but-last)s [%(term)s](%(url)s)"}])
 
 (defn main []
-  (doseq [{:keys [desc template type]} commands]
-    (js/logseq.Editor.registerSlashCommand desc, #(rewrite-block type template)))
+  (doseq [{:keys [desc] :as opts} commands]
+    (js/logseq.Editor.registerSlashCommand desc, #(modify-block opts)))
   (show-msg "URL+ loaded ..."))
 
 ; Standard logseq startup
