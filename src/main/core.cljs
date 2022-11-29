@@ -15,11 +15,12 @@
           block-uuid    (aget block "uuid")
           block-content (js/logseq.Editor.getEditingBlockContent)
           [all-but-last, last-term] (plugin/else-and-last block-content)
+          [label, url]  (plugin/md-link->array last-term)
           url
           (cond ; we may have other types in the future
             (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
             (= type :link/define) (str "https://en.wiktionary.org/wiki/" last-term)
-            :else last-term)]
+            :else url)]
     (if (plugin/url? url)
       (do
         (show-msg (str "Fetching URL: " url))
@@ -31,6 +32,7 @@
                 api-edn  (ednize api-res)
                 attrs    {:url         url
                           :term        last-term
+                          :link-or-url (if label (str/fmt "[$0]($1)" [label url]), url)
                           :definition  (-> api-res ednize fmt-definition)
                           :title       (:title meta-edn)
                           :description (:description meta-edn)
@@ -61,7 +63,7 @@
    {:desc "URL+ Metadata -> Logseq Attributes"
     :type :meta
     :mode :inline
-    :template "%(but-last)s %(url)s\n%(meta-attrs)s\n"}
+    :template "%(but-last)s %(link-or-url)s\n%(meta-attrs)s\n"}
    {:desc "URL+ Metadata -> EDN Code"
     :type :meta
     :template "```edn\n%(meta-edn)s```"}
@@ -71,7 +73,7 @@
    {:desc "URL+ API -> Logseq Attributes"
     :type :api
     :mode :inline
-    :template "%(but-last)s %(url)s\n%(api-attrs)s\n"}
+    :template "%(but-last)s %(link-or-url)s\n%(api-attrs)s\n"}
    {:desc "URL+ API -> Logseq Attribute Blocks"
     :type :api
     :mode :block}
