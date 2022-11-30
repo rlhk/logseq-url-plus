@@ -42,3 +42,11 @@
     [{:a "A" :b "B" :c [] :d []}, {}])
 
   )
+
+(deftest link-transform
+  (is (=  ["nice face" "https://face.com"]
+          (plugin/md-link->array "[nice face](https://face.com)")))
+  (is (=  [nil "https://face.com"]
+          (plugin/md-link->array "https://face.com")))
+  (is (=  ["nice face" "anything"]
+          (plugin/md-link->array "[nice face](anything)"))))
