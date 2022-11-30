@@ -23,6 +23,14 @@
        (re-find #"(?is)(.*?)\s*(\S+?)$")
        rest))
 
+(defn md-link->array
+  "Convert logseq link to label + url array, or retain url"
+  [input]
+  (let [output (re-find #"\[(.*?)\]\((.*?)\)" input)]
+    (if output
+      (rest output)
+      [nil input])))
+
 (defn nested? [data]
   (cond
     (not (or (map? data) (sequential? data))) false
@@ -56,3 +64,4 @@
   (if (sequential? data)
     (map #(identity {:content (edn->logseq-attrs %)}) data)
     {:content (edn->logseq-attrs data)}))
+
