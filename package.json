@@ -1,7 +1,7 @@
 {
   "name": "logseq-url-plus",
-  "version": "0.0.5",
-  "description": "Retreive metadata or API response from a valid URL; then format with various templates.",
+  "version": "0.0.8",
+  "description": "A Logseq plugin that retrieves common information based on the last term of an editing block.",
   "author": "https://github.com/rlhk",
   "main": "./dist/index.html",
   "license": "MIT",
