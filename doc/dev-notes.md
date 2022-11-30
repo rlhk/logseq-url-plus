@@ -32,14 +32,17 @@ This shadow-cljs project is created by following: https://github.com/thheller/sh
 
    > **NOTE:** Test Driven Development (TDD) setup runs on Node.js runtime.
 
-### Marketplace Submission
+### Marketplace 
 
-- [Official Marketplace README](https://github.com/logseq/marketplace/blob/master/README.md)
-- Create and push tag manually
-  `git tag -a <version-tag> -m "<version-tag>"`
-  `git push origin <version-tag>`
-- Use yarn script
-  `yarn release <version-tag> # e.g. yarn release 0.0.3`
+#### Version Release
+
+- Update the "version" field in `package.json`
+- Run the script `./scripts/release.sh` that reads the updated field as git tag for GitHub workflow triggering
+  `yarn release`
+
+#### New Marketplace Submission
+
+- Read the [Official Marketplace README](https://github.com/logseq/marketplace/blob/master/README.md)
 - Fork `https://github.com/logseq/marketplace`
 - Update files in `https://github.com/rlhk/marketplace/tree/master/packages/logseq-url-plus`
 - Create pull request (PR)
