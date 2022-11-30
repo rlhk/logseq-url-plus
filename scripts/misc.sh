@@ -1,0 +1,2 @@
+# one-liner to examine data using bb
+cat src/fixtures/dog.edn | bb -Sdeps '{:deps {djblue/portal {:mvn/version "0.34.2"}}}' -e "(require '[portal.api :as p]) (def p (p/open)) (add-tap #'p/submit) (tap> *input*) @(promise)"
