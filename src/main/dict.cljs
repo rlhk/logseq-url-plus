@@ -3,8 +3,14 @@
     [cuerdas.core :as str]))
 
 (defn fmt-phonetic [phonetic]
-  (if (str/blank? (:audio phonetic))
+  (cond 
+    (str/blank? (:audio phonetic))
     (str/fmt "%(text)s" phonetic)
+
+    (not (:text phonetic))
+    (str/fmt "[audio](%(audio)s)" phonetic)
+
+    :else
     (str/fmt "[%(text)s](%(audio)s)" phonetic)))
 
 (defn fmt-phonetics [phonetics]

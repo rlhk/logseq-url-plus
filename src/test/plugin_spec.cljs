@@ -9,7 +9,10 @@
     " world", ["" "world"]
     "hello good world", ["hello good" "world"]
     "the new    fox is a red fox  ", ["the new    fox is a red" "fox"]
-    " The fox said:\n\r It's a new \n new hell!", [" The fox said:\n\r It's a new \n new" "hell!"]))
+    " The fox said:\n\r It's a new \n new hell!", [" The fox said:\n\r It's a new \n new" "hell!"]
+
+    " Last term is link with space in label: [GitHub: Let’s build from here](https://github.com)" 
+    [" Last term is link with space in label:" "[GitHub: Let’s build from here](https://github.com)"]))
 
 (deftest check-url
   (is (= true (plugin/url? "http://abc.com")))
@@ -39,14 +42,15 @@
     [{:o "O" :p "P" :d []}, {:c [{:c1 "C1"}]}]
 
     {:a "A" :b "B" :c [] :d []}
-    [{:a "A" :b "B" :c [] :d []}, {}])
-
-  )
+    [{:a "A" :b "B" :c [] :d []}, {}]))
 
 (deftest link-transform
+  (is (=  ["GitHub: Let’s build from here" "https://github.com"]
+          (plugin/md-link->label-and-url "[GitHub: Let’s build from here](https://github.com)")))
   (is (=  ["nice face" "https://face.com"]
-          (plugin/md-link->array "[nice face](https://face.com)")))
+          (plugin/md-link->label-and-url "[nice face](https://face.com)")))
   (is (=  [nil "https://face.com"]
-          (plugin/md-link->array "https://face.com")))
+          (plugin/md-link->label-and-url "https://face.com")))
   (is (=  ["nice face" "anything"]
-          (plugin/md-link->array "[nice face](anything)"))))
+          (plugin/md-link->label-and-url "[nice face](anything)"))))
+

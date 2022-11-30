@@ -20,16 +20,14 @@
 ; https://stackoverflow.com/questions/15020669/clojure-multiline-regular-expression
 (defn else-and-last [s]
   (->> (str/rtrim s)
-       (re-find #"(?is)(.*?)\s*(\S+?)$")
+       (re-find #"(?is)(.*?)\s*(\[.*?\]\(.*?\)|\S+?)$")
        rest))
 
-(defn md-link->array
-  "Convert logseq link to label + url array, or retain url"
-  [input]
-  (let [output (re-find #"\[(.*?)\]\((.*?)\)" input)]
-    (if output
-      (rest output)
-      [nil input])))
+(defn md-link->label-and-url
+  "Convert markdown link to [label, url], return input as it is if not a markdown link."
+  [maybe-link]
+  (let [output (re-find #"\[(.*?)\]\((.*?)\)" maybe-link)]
+    (if output (rest output), [nil maybe-link])))
 
 (defn nested? [data]
   (cond

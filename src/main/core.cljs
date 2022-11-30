@@ -15,7 +15,7 @@
           block-uuid    (aget block "uuid")
           block-content (js/logseq.Editor.getEditingBlockContent)
           [all-but-last, last-term] (plugin/else-and-last block-content)
-          [label, url]  (plugin/md-link->array last-term)
+          [maybe-label, url]  (plugin/md-link->label-and-url last-term)
           url
           (cond ; we may have other types in the future
             (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
@@ -32,7 +32,7 @@
                 api-edn  (ednize api-res)
                 attrs    {:url         url
                           :term        last-term
-                          :link-or-url (if label (str/fmt "[$0]($1)" [label url]), url)
+                          :link-or-url (if maybe-label (str/fmt "[$0]($1)" [maybe-label url]), url)
                           :definition  (-> api-res ednize fmt-definition)
                           :title       (:title meta-edn)
                           :description (:description meta-edn)
