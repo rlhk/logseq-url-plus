@@ -17,9 +17,9 @@
  {:plugin {:target :browser
            :module-loader true
            :output-dir "dist"
-           :modules  {:index {:init-fn core/init!}}
+           :modules  {:index {:init-fn core/init}}
            :devtools {:preloads [devtools.preload]
-                      :after-load core/reload!
+                      :after-load core/reload
                       :repl-pprint true}
            :dev {}
            :release {:compiler-options {:optimizations :advanced}}}

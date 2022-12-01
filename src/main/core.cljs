@@ -9,10 +9,10 @@
 
 (def show-msg js/logseq.UI.showMsg)
 
-(defn modify-block [{:keys [template type mode] 
-                     :or   {mode :child}}]
-  (p/let [block         (js/logseq.Editor.getCurrentBlock)
-          block-uuid    (aget block "uuid")
+(defn modify-block [{:keys [type mode block child] 
+                     :or   {mode :template}}]
+  (p/let [current-block (js/logseq.Editor.getCurrentBlock)
+          block-uuid    (aget current-block "uuid")
           block-content (js/logseq.Editor.getEditingBlockContent)
           [all-but-last, last-term] (plugin/else-and-last block-content)
           [maybe-label, url]  (plugin/md-link->label-and-url last-term)
@@ -45,51 +45,56 @@
                           :api-blocks  (plugin/edn->logseq-blocks api-edn)
                           :but-last    all-but-last}]
           (show-msg "Formatting block(s) ...")
-          (cond
-            (= mode :inline) (js/logseq.Editor.updateBlock block-uuid, (str/fmt template attrs))
-            (= mode :block)  (js/logseq.Editor.insertBatchBlock block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
-            :else (js/logseq.Editor.insertBlock block-uuid, (str/fmt template attrs)))))
-      (show-msg (str/fmt "\"%s\" doesn't seem to be a valid URL!" last-term)))))
+          (when block (js/logseq.Editor.updateBlock block-uuid, (str/fmt block attrs)))
+          (if (= mode :block)
+            (js/logseq.Editor.insertBatchBlock block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
+            (when child (js/logseq.Editor.insertBlock block-uuid, (str/fmt child attrs))))))
+      (show-msg (str/fmt "Invalid URL: \"%s\"" last-term)))))
 
 (def commands
   [{:desc "URL+ [title](url)"
-    :type :meta ; response type
-    :mode :inline ; logseq block writting mode. Default :child
-    :template "%(but-last)s [%(title)s](%(url)s)"}
+    :type :meta ; Supported response types: (or :meta :api :api/define :link/define)
+    ;; 2 modes are supported: 
+    ;; :template (default, base on string template defined in :block & :child) 
+    ;; :block (use :api-blocks attrs) as children blocks. Ignore :child template )
+    :mode :template
+    :block "%(but-last)s [%(title)s](%(url)s)"}
    {:desc "URL+ [title](url) description"
     :type :meta
-    :mode :inline
-    :template "%(but-last)s [%(title)s](%(url)s) %(description)s"}
+    :block "%(but-last)s [%(title)s](%(url)s) %(description)s"}
    {:desc "URL+ Metadata -> Logseq Attributes"
     :type :meta
-    :mode :inline
-    :template "%(but-last)s %(link-or-url)s\n%(meta-attrs)s\n"}
+    :block "%(but-last)s %(link-or-url)s\n%(meta-attrs)s\n"}
    {:desc "URL+ Metadata -> EDN Code"
     :type :meta
-    :template "```edn\n%(meta-edn)s```"}
+    :block "%(but-last)s %(term)s"
+    :child "```edn\n%(meta-edn)s```"}
    {:desc "URL+ Metadata -> JSON Code"
     :type :meta
-    :template "```json\n%(meta-json)s\n```"}
+    :block "%(but-last)s %(term)s"
+    :child "```json\n%(meta-json)s\n```"} ; :child is optional for mode :template 
    {:desc "URL+ API -> Logseq Attributes"
     :type :api
-    :mode :inline
-    :template "%(but-last)s %(link-or-url)s\n%(api-attrs)s\n"}
+    :block "%(but-last)s %(link-or-url)s\n%(api-attrs)s\n"}
    {:desc "URL+ API -> Logseq Attribute Blocks"
     :type :api
-    :mode :block}
+    :mode :block
+    :block "%(but-last)s %(term)s"}
    {:desc "URL+ API -> EDN Code"
     :type :api
-    :template "```edn\n%(api-edn)s```"}
+    :block "%(but-last)s %(term)s"
+    :child "```edn\n%(api-edn)s```"}
    {:desc "URL+ API -> JSON Code"
     :type :api
-    :template "```json\n%(api-json)s\n```"}
+    :block "%(but-last)s %(term)s"
+    :child "```json\n%(api-json)s\n```"}
    {:desc "URL+ Append Definition"
     :type :api/define
-    :template "%(definition)s"}
+    :block "%(but-last)s %(term)s #card"
+    :child "%(definition)s"}
    {:desc "URL+ Link Wiktionary URL"
     :type :link/define
-    :mode :inline
-    :template "%(but-last)s [%(term)s](%(url)s)"}])
+    :block "%(but-last)s [%(term)s](%(url)s)"}])
 
 (defn main []
   (doseq [{:keys [desc] :as opts} commands]
@@ -98,12 +103,12 @@
 
 ; Standard logseq startup
 ; JS equivalent: logseq.ready(main).catch(() => console.error)
-(defn init! []
+(defn init []
   (println "... core.init!")
   (-> (p/promise (js/logseq.ready))
       (p/then main)
       (p/catch #(js/console.error))))
 
-(defn reload! []
+(defn reload []
   (println "... core.reload!")
-  (init!))
+  (init))

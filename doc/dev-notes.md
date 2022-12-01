@@ -9,36 +9,52 @@
 
 This shadow-cljs project is created by following: https://github.com/thheller/shadow-cljs#quick-start. Notes below:
 
-1. New project is created from shadow-cljs boilerplate
+#### New Project
+New project is created from shadow-cljs boilerplate
 
-   `npx create-cljs-project logseq-url-plus`
-   > **NOTE:** This is a onetime operation. Skip if project is already created.
+`npx create-cljs-project logseq-url-plus`
+> **NOTE:** This is a onetime operation. Skip if project is already created.
 
-2. If the codebase is obtained from a git repository, run `yarn install` to install Node.js dependencies
+If the codebase is obtained from a git repository, run `yarn install` to install Node.js dependencies
 
-3. Verify shadow-cljs setup by launching browser REPL
+#### shadow-cljs
+shadow-cljs setup could be verified by launching the browser REPL
 
-   `npx shadow-cljs browser-repl`
+`npx shadow-cljs browser-repl`
 
-   On MacOS, a browser will be opened to provide the CLJS runtime. Input `(js/alert "Hello World)` in the REPL and a classic alert box will be shown in the browser window.
+On MacOS, a browser will be opened to provide the CLJS runtime. Input `(js/alert "Hello World)` in the REPL and a classic alert box will be shown in the browser window.
 
-   In case of Java version related errors, you might want to manage Java with https://github.com/jenv/
+In case of Java version related errors, you might want to manage Java with https://github.com/jenv/
 
-4. Development (see `package.json` scripts section for detail)
-   `yarn dev`
-   - Enable developer mode in Logseq
-   - Click "Load unpacked plugin" and open the ./dist folder
-   - To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
+#### Development
 
-   > **NOTE:** Test Driven Development (TDD) setup runs on Node.js runtime.
+`yarn dev` 
+
+A few things happen here:
+1. Watch code changes and perform compilation if needed
+2. Watch and run tests upon unit test code change
+> **NOTE:** Current Test Driven Development (TDD) setup runs on Node.js runtime.
+
+See `package.json` scripts section for detail)
+
+In the Logseq App
+
+- Enable developer mode in Logseq
+- Click "Load unpacked plugin" and open the ./dist folder
+- To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
+
+
+#### Editor Setup
+
+I used to Atom Editor and parinfer for Clojure editing. I was forced to switch to VSCode and Calva extension's paredit mode. The experience is so far so good.
 
 ### Marketplace 
 
 #### Version Release
 
 - Update the "version" field in `package.json`
-- Run the script `./scripts/release.sh` that reads the updated field as git tag for GitHub workflow triggering
-  `yarn release`
+- `yarn release`
+  It actually runs the script `./scripts/release.sh`, which reads the said "version" field as the git tag to be added. Upon repository pushing to GitHub, the new tag will trigger GitHub workflow to build the assets of a new release.
 
 #### New Marketplace Submission
 
