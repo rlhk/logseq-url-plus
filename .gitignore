@@ -18,6 +18,7 @@ pom.xml.asc
 
 .clj-kondo
 .lsp
+.portal
 
 .hgignore
 .hg/
