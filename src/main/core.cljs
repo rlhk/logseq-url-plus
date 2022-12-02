@@ -24,8 +24,8 @@
     (if (plugin/url? url)
       (do
         (show-msg (str "Fetching URL: " url))
-        (p/let [url-res  (.getLinkPreview link-preview url)
-                meta-edn (ednize url-res)
+        (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
+                meta-edn (ednize meta-res)
                 api-res  (-> (p/promise (js/fetch url))
                              (p/then   #(.json %))
                              (p/catch  #(js/console.log %)))
@@ -37,7 +37,7 @@
                           :title       (:title meta-edn)
                           :description (:description meta-edn)
                           :meta-edn    (with-out-str (pprint meta-edn))
-                          :meta-json   (js/JSON.stringify url-res nil 2) ;built-in prettify
+                          :meta-json   (js/JSON.stringify meta-res nil 2) ;built-in prettify
                           :meta-attrs  (plugin/edn->logseq-attrs meta-edn)
                           :api-edn     (-> api-res ednize pprint with-out-str)
                           :api-json    (js/JSON.stringify api-res nil 2)
