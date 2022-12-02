@@ -58,43 +58,43 @@
     ;; :template (default, base on string template defined in :block & :child) 
     ;; :block (use :api-blocks attrs) as children blocks. Ignore :child template )
     :mode :template
-    :block "%(but-last)s [%(title)s](%(url)s)"}
+    :block "%(but-last)s[%(title)s](%(url)s)"}
    {:desc "URL+ [title](url) description"
     :type :meta
-    :block "%(but-last)s [%(title)s](%(url)s) %(description)s"}
+    :block "%(but-last)s[%(title)s](%(url)s) %(description)s"}
    {:desc "URL+ Metadata -> Logseq Attributes"
     :type :meta
-    :block "%(but-last)s %(link-or-url)s\n%(meta-attrs)s\n"}
+    :block "%(but-last)s%(link-or-url)s\n%(meta-attrs)s\n"}
    {:desc "URL+ Metadata -> EDN Code"
     :type :meta
-    :block "%(but-last)s %(term)s"
+    :block "%(but-last)s%(term)s"
     :child "```edn\n%(meta-edn)s```"}
    {:desc "URL+ Metadata -> JSON Code"
     :type :meta
-    :block "%(but-last)s %(term)s"
+    :block "%(but-last)s%(term)s"
     :child "```json\n%(meta-json)s\n```"} ; :child is optional for mode :template 
    {:desc "URL+ API -> Logseq Attributes"
     :type :api
-    :block "%(but-last)s %(link-or-url)s\n%(api-attrs)s\n"}
+    :block "%(but-last)s%(link-or-url)s\n%(api-attrs)s\n"}
    {:desc "URL+ API -> Logseq Attribute Blocks"
     :type :api
     :mode :block
-    :block "%(but-last)s %(term)s"}
+    :block "%(but-last)s%(term)s"}
    {:desc "URL+ API -> EDN Code"
     :type :api
-    :block "%(but-last)s %(term)s"
+    :block "%(but-last)s%(term)s"
     :child "```edn\n%(api-edn)s```"}
    {:desc "URL+ API -> JSON Code"
     :type :api
-    :block "%(but-last)s %(term)s"
+    :block "%(but-last)s%(term)s"
     :child "```json\n%(api-json)s\n```"}
    {:desc "URL+ Append Definition"
     :type :api/define
-    :block "%(but-last)s %(term)s #card"
+    :block "%(but-last)s%(term)s #card"
     :child "%(definition)s"}
    {:desc "URL+ Link Wiktionary URL"
     :type :link/define
-    :block "%(but-last)s [%(term)s](%(url)s)"}])
+    :block "%(but-last)s[%(term)s](%(url)s)"}])
 
 (defn main []
   (doseq [{:keys [desc] :as opts} commands]

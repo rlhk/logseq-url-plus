@@ -46,9 +46,47 @@ In the Logseq App
 
 #### Editor Setup
 
-I used to Atom Editor and parinfer for Clojure editing. I was forced to switch to VSCode and Calva extension's paredit mode. The experience is so far so good.
+Atom Editor + Vim mode + Parinfer was my long time preference for Clojure editing. However as Atom is being sunsetting, I've switched to VSCode + Vim + [Paredit](https://calva.io/paredit/) in [Calva](https://calva.io). Took a while to adjust my editing muscle, but the experience is getting greater. 
 
-### Marketplace 
+#### REPL Setup in VSCode
+
+Calva's REPL client is also trivial to connect to the REPL server provided by the shadow-cljs dev mode runtime in Logseq App.
+- Make sure Logseq Desktop App developer mode is enabled and `yarn dev` is running as mentioned above
+- Uninstall the plugin installed from Marketplace, if applicable
+- In Logseq App
+  - Select: Plugins -> Load unpacked plugin -> "Choose the plugin project folder"
+  - Test the plugin is actually working
+
+Open the plugin project in VSCode. Bring up the command search and follow:
+
+![](./imgs/calva-repl-1.png)
+
+![](./imgs/calva-repl-2.png)
+
+![](./imgs/calva-repl-3.png)
+
+![](./imgs/calva-repl-4.png)
+
+Try evaluate a few forms in the REPL. 
+
+`(in-ns 'core)` switch to namespace `core`
+
+`commands` print the defined commands symbol
+
+![](./imgs/calva-repl-5.png)
+
+`(js/alert "Hello")`
+
+![](./imgs/calva-repl-6.png)
+
+`(js/console.log "Hello Console")`
+![](./imgs/calva-repl-7.png)
+
+`(show-msg "Hello Logseq")` Run the defined Clojure fn `show-msg` in namespace `core` to display Logseq App message.
+
+Now the REPL is working cool!
+
+### Marketplace
 
 #### Version Release
 

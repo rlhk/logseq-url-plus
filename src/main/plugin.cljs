@@ -20,7 +20,7 @@
 ; https://stackoverflow.com/questions/15020669/clojure-multiline-regular-expression
 (defn else-and-last [s]
   (->> (str/rtrim s)
-       (re-find #"(?is)(.*?)\s*(\[.*?\]\(.*?\)|\S+?)$")
+       (re-find #"(?is)(.*?\s*)(\[.*?\]\(.*?\)|\S+?)$")
        rest))
 
 (defn md-link->label-and-url

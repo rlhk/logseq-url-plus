@@ -6,13 +6,13 @@
 (deftest else-and-last
   (are [in out] (= (plugin/else-and-last in) out)
     "world", ["" "world"]
-    " world", ["" "world"]
-    "hello good world", ["hello good" "world"]
-    "the new    fox is a red fox  ", ["the new    fox is a red" "fox"]
-    " The fox said:\n\r It's a new \n new hell!", [" The fox said:\n\r It's a new \n new" "hell!"]
+    "  world", ["  " "world"]
+    "hello good world", ["hello good " "world"]
+    "the new    fox is a red fox  ", ["the new    fox is a red " "fox"]
+    " The fox said:\n\r It's a new \n new hell!", [" The fox said:\n\r It's a new \n new " "hell!"]
 
     " Last term is link with space in label: [GitHub: Let’s build from here](https://github.com)" 
-    [" Last term is link with space in label:" "[GitHub: Let’s build from here](https://github.com)"]))
+    [" Last term is link with space in label: " "[GitHub: Let’s build from here](https://github.com)"]))
 
 (deftest check-url
   (is (= true (plugin/url? "http://abc.com")))
