@@ -1,6 +1,6 @@
 {
   "name": "logseq-url-plus",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "A Logseq plugin that retrieves common information based on the last term of an editing block.",
   "author": "https://github.com/rlhk",
   "main": "./dist/index.html",
@@ -19,9 +19,10 @@
     "release": "./scripts/release.sh"
   },
   "devDependencies": {
-    "shadow-cljs": "2.20.12"
+    "shadow-cljs": "2.20.13"
   },
   "dependencies": {
+    "@logseq/libs": "0.0.12",
     "link-preview-js": "^3.0.4"
   }
 }

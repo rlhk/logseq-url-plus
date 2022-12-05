@@ -43,7 +43,6 @@ In the Logseq App
 - Click "Load unpacked plugin" and open the ./dist folder
 - To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
 
-
 #### Editor Setup
 
 Atom Editor + Vim mode + Parinfer was my long time preference for Clojure editing. However as Atom is being sunsetting, I've switched to VSCode + Vim + [Paredit](https://calva.io/paredit/) in [Calva](https://calva.io). Took a while to adjust my editing muscle, but the experience is getting greater. 
@@ -103,7 +102,7 @@ Now the REPL is working cool!
 
 ### TODOs
 - [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
-- [ ] Move logseq/libs from index.html to ns require when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061
+- [x] Move logseq/libs from index.html to `ns require` when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061. The issue was fixed as of @logseq/libs version 0.0.11
 
 ### Prior Arts and Reference Plugins
 - https://github.com/logseq/logseq-plugin-samples (official sample)
@@ -111,3 +110,4 @@ Now the REPL is working cool!
 - https://github.com/0x7b1/logseq-plugin-automatic-url-title
 - https://github.com/superman66/logseq-plugin-url-md (not recommended by author)
 - https://github.com/trashhalo/logseq-dictionary
+- https://github.com/kurtharriger/logseq-things3-plugin (ClojureScript but not in marketplace)

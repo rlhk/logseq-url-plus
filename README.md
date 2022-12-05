@@ -28,7 +28,7 @@ If the last term is a valid URL, metadata or API response is fetched, then the b
 - Need more formatting templates beyond the default `[title](url)`. Customizable templates in plan
 - Works for block with multiple terms and even multiline. The plugin only considers the last term without other content in the active editing block
 - Presist URL metadata or API response in graph
-- Learn Logseq plugin dev in ClojureScript (most plugins today are written in JS/TS, if not all)
+- Learn Logseq plugin dev in ClojureScript (Sample projects are rare when this project started)
 
 ## Plugin Devevelopment in ClojureScript
 

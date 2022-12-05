@@ -5,6 +5,7 @@
     [clojure.pprint :refer [pprint]]
     [plugin :refer [ednize]]
     [dict :refer [fmt-definition]]
+    ["@logseq/libs"]
     ["link-preview-js" :as link-preview]))
 
 (def show-msg js/logseq.UI.showMsg)
