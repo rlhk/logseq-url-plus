@@ -23,7 +23,10 @@ jobs:
       - name: Build
         id: build
         run: |
-          brew install borkdude/brew/babashka
+          # brew install borkdude/brew/babashka
+          curl -sLO https://raw.githubusercontent.com/babashka/babashka/master/install
+          chmod +x install
+          ./install
           npm install -g yarn
           # yarn compile
           bb compile
