@@ -18,11 +18,12 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - uses: tzafrirben/babashka-docker-action@v0.3
+      # - uses: tzafrirben/babashka-docker-action@v0.3
 
       - name: Build
         id: build
         run: |
+          brew install borkdude/brew/babashka
           npm install -g yarn
           # yarn compile
           bb compile
