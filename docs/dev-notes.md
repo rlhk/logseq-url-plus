@@ -15,7 +15,7 @@ New project is created from shadow-cljs boilerplate
 `npx create-cljs-project logseq-url-plus`
 > **NOTE:** This is a onetime operation. Skip if project is already created.
 
-If the codebase is obtained from a git repository, run `yarn install` to install Node.js dependencies
+If the codebase is obtained from a git repository, run `yarn` to install Node.js dependencies
 
 #### shadow-cljs
 shadow-cljs setup could be verified by launching the browser REPL
@@ -28,7 +28,9 @@ In case of Java version related errors, you might want to manage Java with https
 
 #### Development
 
-`yarn dev` 
+`bb dev`
+
+Note: Moved to babashka based tasks. Old npm scripts are keep as reference.
 
 A few things happen here:
 1. Watch code changes and perform compilation if needed
@@ -50,7 +52,7 @@ Atom Editor + Vim mode + Parinfer was my long time preference for Clojure editin
 #### REPL Setup in VSCode
 
 Calva's REPL client is also trivial to connect to the REPL server provided by the shadow-cljs dev mode runtime in Logseq App.
-- Make sure Logseq Desktop App developer mode is enabled and `yarn dev` is running as mentioned above
+- Make sure Logseq Desktop App developer mode is enabled and `bb dev` is running as mentioned above
 - Uninstall the plugin installed from Marketplace, if applicable
 - In Logseq App
   - Select: Plugins -> Load unpacked plugin -> "Choose the plugin project folder"
@@ -90,7 +92,7 @@ Now the REPL is working cool!
 #### Version Release
 
 - Update the "version" field in `package.json`
-- `yarn release`
+- `bb release`
   It actually runs the script `./scripts/release.sh`, which reads the said "version" field as the git tag to be added. Upon repository pushing to GitHub, the new tag will trigger GitHub workflow to build the assets of a new release.
 
 #### New Marketplace Submission
