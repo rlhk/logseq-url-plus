@@ -24,7 +24,7 @@
             :else url)]
     (if (plugin/url? url)
       (do
-        (show-msg (str "Fetching URL: " url))
+        (show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (ednize meta-res)
                 api-res  (-> (p/promise (js/fetch url))
@@ -45,7 +45,7 @@
                           :api-attrs   (plugin/edn->logseq-attrs api-edn)
                           :api-blocks  (plugin/edn->logseq-blocks api-edn)
                           :but-last    all-but-last}]
-          (show-msg "Formatting block(s) ...")
+          (println "Formatting block(s) ...")
           (when block (js/logseq.Editor.updateBlock block-uuid, (str/fmt block attrs)))
           (if (= mode :block)
             (js/logseq.Editor.insertBatchBlock block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))

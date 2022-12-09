@@ -1,0 +1,18 @@
+;; WIP. Needs to adjust GitHub workflow
+{:paths ["scripts"]
+ :tasks
+ {:requires ([helper :refer [run]])
+  dev     {:doc "Start local dev. Watches source code and unit tests"
+           :task (run "rm -fr ./dist ./out/*"
+                      "mkdir ./dist", "cp -r resources/ dist"
+                      "yarn", "npx shadow-cljs watch :plugin :test")}
+  test    {:doc "Standalone testing"
+           :task (run "npx shadow-cljs release test")}
+  compile {:doc "Compile releaseable code in advanced  optimisation mode"
+           :task (run "rm -fr ./dist ./out/*"
+                      "mkdir ./dist", "cp -r resources/ dist"
+                      "yarn", "npx shadow-cljs release :plugin")}
+  release {:doc "Push version tag to GitHub and trigger release build"
+           :task (run "./scripts/release.sh")}}}
+
+
