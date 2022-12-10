@@ -8,11 +8,11 @@
                       "yarn", "npx shadow-cljs watch :plugin :test")}
   test    {:doc "Standalone testing"
            :task (run "npx shadow-cljs release test")}
-  compile {:doc "Compile releaseable code in advanced  optimisation mode"
+  compile {:doc "Advance compilation of code ready for release"
            :task (run "rm -fr dist out"
                       "mkdir dist", "cp -R resources/. dist/"
                       "yarn", "npx shadow-cljs release :plugin")}
-  release {:doc "Push version tag to GitHub and trigger release build"
+  release {:doc "Push version tag to GitHub for triggering build and release tasks"
            :task (run "./scripts/release.sh")}}}
 
 
