@@ -3,8 +3,9 @@
     [promesa.core :as p]
     [cuerdas.core :as str]
     [clojure.pprint :refer [pprint]]
-    [plugin :refer [ednize]]
-    [dict :refer [fmt-definition]]
+    [util :refer [decode-html-content ednize url? else-and-last]]
+    [api]
+    [define]
     ["@logseq/libs"]
     ["link-preview-js" :as link-preview]))
 
@@ -15,14 +16,14 @@
   (p/let [current-block (js/logseq.Editor.getCurrentBlock)
           block-uuid    (aget current-block "uuid")
           block-content (js/logseq.Editor.getEditingBlockContent)
-          [all-but-last, last-term] (plugin/else-and-last block-content)
-          [maybe-label, url]  (plugin/md-link->label-and-url last-term)
+          [all-but-last, last-term] (else-and-last block-content)
+          [maybe-label, url]  (api/md-link->label-and-url last-term)
           url
           (cond ; we may have other types in the future
             (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
             (= type :link/define) (str "https://en.wiktionary.org/wiki/" last-term)
             :else url)]
-    (if (plugin/url? url)
+    (if (url? url)
       (do
         (show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
@@ -31,19 +32,19 @@
                              (p/then   #(.json %))
                              (p/catch  #(js/console.log %)))
                 api-edn  (ednize api-res)
-                attrs    {:url         url
-                          :term        last-term
+                attrs    {:term        last-term
+                          :url         url
                           :link-or-url (if maybe-label (str/fmt "[$0]($1)" [maybe-label url]), url)
-                          :definition  (-> api-res ednize fmt-definition)
-                          :title       (:title meta-edn)
+                          :title       (-> (:title meta-edn) decode-html-content)
                           :description (:description meta-edn)
+                          :definition  (-> api-res ednize define/fmt-definition)
                           :meta-edn    (with-out-str (pprint meta-edn))
                           :meta-json   (js/JSON.stringify meta-res nil 2) ;built-in prettify
-                          :meta-attrs  (plugin/edn->logseq-attrs meta-edn)
+                          :meta-attrs  (api/edn->logseq-attrs meta-edn)
                           :api-edn     (-> api-res ednize pprint with-out-str)
                           :api-json    (js/JSON.stringify api-res nil 2)
-                          :api-attrs   (plugin/edn->logseq-attrs api-edn)
-                          :api-blocks  (plugin/edn->logseq-blocks api-edn)
+                          :api-attrs   (api/edn->logseq-attrs api-edn)
+                          :api-blocks  (api/edn->logseq-blocks api-edn)
                           :but-last    all-but-last}]
           (println "Formatting block(s) ...")
           (when block (js/logseq.Editor.updateBlock block-uuid, (str/fmt block attrs)))

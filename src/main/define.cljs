@@ -1,4 +1,4 @@
-(ns dict
+(ns define
   (:require
     [cuerdas.core :as str]))
 

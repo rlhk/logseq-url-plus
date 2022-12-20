@@ -1,47 +1,17 @@
 ; CAUTION: ONLY allows pure fns to facilitate Node.js based TDD setup
-(ns plugin
+(ns api
   (:require
-   [medley.core :refer [filter-vals]]
    [cuerdas.core :as str]))
 
 ; TODO
 (def settings-schema
   [{}])
 
-(defn ednize [data]
-  (js->clj data :keywordize-keys true))
-
-;; https://github.com/lambdaisland/uri maybe useful in the future
-(defn url? [s]
-  (try
-    (do (js/URL. s) true)
-    (catch js/Object e false)))
-
-; https://stackoverflow.com/questions/15020669/clojure-multiline-regular-expression
-(defn else-and-last [s]
-  (->> (str/rtrim s)
-       (re-find #"(?is)(.*?\s*)(\[.*?\]\(.*?\)|\S+?)$")
-       rest))
-
 (defn md-link->label-and-url
   "Convert markdown link to [label, url], return input as it is if not a markdown link."
   [maybe-link]
   (let [output (re-find #"\[(.*?)\]\((.*?)\)" maybe-link)]
     (if output (rest output), [nil maybe-link])))
-
-(defn nested? [data]
-  (cond
-    (not (or (map? data) (sequential? data))) false
-    (not (seq data)) false
-    (or (map? data) (sequential? data)) true
-    :else false))
-
-(defn attrs-and-children
-  "Split flat values and nested values of a map"
-  [data]
-  ;; (prn "attrs-and-children ..." data)
-  [(filter-vals #(not (nested? %)) data)
-   (filter-vals #(nested? %) data)])
 
 (defn edn->logseq-attrs
   "Convert EDN data to Logseq attributes string. Assume input is map."

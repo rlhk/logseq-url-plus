@@ -1,7 +1,7 @@
-(ns dict-spec
+(ns define-spec
   (:require
     [cljs.test :refer [deftest is are testing]]
-    [dict :as d]))
+    [define :as d]))
 
 (def sample-word-1
   [{:word "dog",
