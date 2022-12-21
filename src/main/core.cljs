@@ -4,18 +4,17 @@
     [cuerdas.core :as str]
     [clojure.pprint :refer [pprint]]
     [util :refer [decode-html-content ednize url? else-and-last]]
+    [ls]
     [api]
     [define]
     ["@logseq/libs"]
     ["link-preview-js" :as link-preview]))
 
-(def show-msg js/logseq.UI.showMsg)
-
 (defn modify-block [{:keys [type mode block child] 
                      :or   {mode :template}}]
-  (p/let [current-block (js/logseq.Editor.getCurrentBlock)
+  (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
-          block-content (js/logseq.Editor.getEditingBlockContent)
+          block-content (ls/get-editing-block-content)
           [all-but-last, last-term] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-term)
           url
@@ -25,7 +24,7 @@
             :else url)]
     (if (url? url)
       (do
-        (show-msg (str "Fetching: " url))
+        (ls/show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (ednize meta-res)
                 api-res  (-> (p/promise (js/fetch url))
@@ -47,11 +46,11 @@
                           :api-blocks  (api/edn->logseq-blocks api-edn)
                           :but-last    all-but-last}]
           (println "Formatting block(s) ...")
-          (when block (js/logseq.Editor.updateBlock block-uuid, (str/fmt block attrs)))
+          (when block (ls/update-block block-uuid, (str/fmt block attrs)))
           (if (= mode :block)
-            (js/logseq.Editor.insertBatchBlock block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
-            (when child (js/logseq.Editor.insertBlock block-uuid, (str/fmt child attrs))))))
-      (show-msg (str/fmt "Invalid URL: \"%s\"" last-term)))))
+            (ls/insert-batch-block block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
+            (when child (ls/insert-block block-uuid, (str/fmt child attrs))))))
+      (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-term)))))
 
 (def commands
   [{:desc "URL+ [title](url)"
@@ -100,17 +99,19 @@
 
 (defn main []
   (doseq [{:keys [desc] :as opts} commands]
-    (js/logseq.Editor.registerSlashCommand desc, #(modify-block opts)))
-  (show-msg "URL+ loaded ..."))
+    (ls/register-slash-command desc, #(modify-block opts)))
+  (ls/show-msg "URL+ loaded ..."))
 
-; Standard logseq startup
+; Handshake with logseq
 ; JS equivalent: logseq.ready(main).catch(() => console.error)
 (defn init []
   (println "... core.init!")
+  ;; handshake call `js/logseq.ready` needs to be here 
+  ;; won't work when placed in ns `ls` like other js calls
   (-> (p/promise (js/logseq.ready))
       (p/then main)
       (p/catch #(js/console.error))))
 
 (defn reload []
   (println "... core.reload!")
-  (init))
+  #_(init))
