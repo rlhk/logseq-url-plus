@@ -56,7 +56,7 @@ Calva's REPL client can connnect to the REPL server provided by the shadow-cljs 
   - Select: Plugins -> Load unpacked plugin -> "Choose the plugin project folder"
   - Test the plugin is actually working
 
-Open the plugin project in VSCode. Bring up the command search and pproceed with the following options:
+Open the plugin project in VSCode. Bring up the command search and proceed with the following options:
 
 ![](./imgs/calva-repl-1.png)
 
