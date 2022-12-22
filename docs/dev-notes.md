@@ -9,7 +9,7 @@
 
 This shadow-cljs project is created by following: https://github.com/thheller/shadow-cljs#quick-start. Notes below:
 
-#### New Project
+#### Project Creation
 New project is created from shadow-cljs boilerplate
 
 `npx create-cljs-project logseq-url-plus`
@@ -30,14 +30,12 @@ In case of Java version related errors, you might want to manage Java with https
 
 `bb dev`
 
-Note: Moved to babashka based tasks. Old npm scripts are keep as reference.
+> **NOTE:** Moved to babashka based tasks. Old npm scripts are kept as reference.
 
-A few things happen here:
+The dev task do the following things:
 1. Watch code changes and perform compilation if needed
-2. Watch and run tests upon unit test code change
+2. Watch and run tests upon code or unit test code change
 > **NOTE:** Current Test Driven Development (TDD) setup runs on Node.js runtime.
-
-See `package.json` scripts section for detail)
 
 In the Logseq App
 
@@ -51,14 +49,14 @@ Atom Editor + Vim mode + Parinfer was my long time preference for Clojure editin
 
 #### REPL Setup in VSCode
 
-Calva's REPL client is also trivial to connect to the REPL server provided by the shadow-cljs dev mode runtime in Logseq App.
+Calva's REPL client can connnect to the REPL server provided by the shadow-cljs dev mode runtime in Logseq App.
 - Make sure Logseq Desktop App developer mode is enabled and `bb dev` is running as mentioned above
 - Uninstall the plugin installed from Marketplace, if applicable
 - In Logseq App
   - Select: Plugins -> Load unpacked plugin -> "Choose the plugin project folder"
   - Test the plugin is actually working
 
-Open the plugin project in VSCode. Bring up the command search and follow:
+Open the plugin project in VSCode. Bring up the command search and pproceed with the following options:
 
 ![](./imgs/calva-repl-1.png)
 
@@ -85,7 +83,7 @@ Try evaluate a few forms in the REPL.
 
 `(show-msg "Hello Logseq")` Run the defined Clojure fn `show-msg` in namespace `core` to display Logseq App message.
 
-Now the REPL is working cool!
+Now the REPL is ready for action!
 
 ### Marketplace
 
@@ -93,7 +91,7 @@ Now the REPL is working cool!
 
 - Update the "version" field in `package.json`
 - `bb release`
-  It actually runs the script `./scripts/release.sh`, which reads the said "version" field as the git tag to be added. Upon repository pushing to GitHub, the new tag will trigger GitHub workflow to build the assets of a new release.
+  - It runs the script `./scripts/release.sh`, which reads the said "version" field as the git tag to be added. Upon repository pushing to GitHub, the new tag will trigger GitHub workflow to build the assets of a new release.
 
 #### New Marketplace Submission
 
