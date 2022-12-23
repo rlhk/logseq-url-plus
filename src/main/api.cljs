@@ -5,7 +5,11 @@
 
 ; TODO
 (def settings-schema
-  [{}])
+  [{:key "TwitterAccessToken"
+    :type "string"
+    :title "Twitter Access Token"
+    :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
+    :default ""}])
 
 (defn md-link->label-and-url
   "Convert markdown link to [label, url], return input as it is if not a markdown link."

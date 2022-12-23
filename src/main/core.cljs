@@ -21,13 +21,20 @@
           (cond ; we may have other types in the future
             (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
             (= type :link/define) (str "https://en.wiktionary.org/wiki/" last-term)
-            :else url)]
+            (= type :api/tweet)
+            (str "https://api.twitter.com/2/tweets/?tweet.fields=created_at&expansions=author_id&user.fields=created_at&ids="
+                 (-> url (str/split #"/") last))
+            :else url)
+          auth
+          (cond
+            (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
+            :else nil)]
     (if (url? url)
       (do
         (ls/show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (ednize meta-res)
-                api-res  (-> (p/promise (js/fetch url))
+                api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
                              (p/then   #(.json %))
                              (p/catch  #(js/console.log %)))
                 api-edn  (ednize api-res)
@@ -36,14 +43,17 @@
                           :link-or-url (if maybe-label (str/fmt "[$0]($1)" [maybe-label url]), url)
                           :title       (-> (:title meta-edn) decode-html-content)
                           :description (:description meta-edn)
-                          :definition  (-> api-res ednize define/fmt-definition)
+                          :definition  (-> api-edn define/fmt-definition)
                           :meta-edn    (with-out-str (pprint meta-edn))
                           :meta-json   (js/JSON.stringify meta-res nil 2) ;built-in prettify
                           :meta-attrs  (api/edn->logseq-attrs meta-edn)
-                          :api-edn     (-> api-res ednize pprint with-out-str)
+                          :api-edn     (-> api-edn pprint with-out-str)
                           :api-json    (js/JSON.stringify api-res nil 2)
                           :api-attrs   (api/edn->logseq-attrs api-edn)
                           :api-blocks  (api/edn->logseq-blocks api-edn)
+                          :tweet-text  (-> api-edn (get-in [:data 0 :text]))
+                          :tweet-time  (-> api-edn (get-in [:data 0 :created_at]))
+                          :tweet-author(-> api-edn (get-in [:includes :users 0 :username]))
                           :but-last    all-but-last}]
           (println "Formatting block(s) ...")
           (when block (ls/update-block block-uuid, (str/fmt block attrs)))
@@ -93,11 +103,16 @@
     :type :api/define
     :block "%(but-last)s%(term)s #card"
     :child "%(definition)s"}
+   {:desc "URL+ Extract tweet text of twitter.com"
+    :type :api/tweet
+    :block "%(but-last)s%(term)s #tweet"
+    :child "%(tweet-text)s\n%(tweet-author)s (%(tweet-time)s)"}
    {:desc "URL+ Link Wiktionary URL"
     :type :link/define
     :block "%(but-last)s[%(term)s](%(url)s)"}])
 
 (defn main []
+  (js/logseq.useSettingsSchema (clj->js api/settings-schema))
   (doseq [{:keys [desc] :as opts} commands]
     (ls/register-slash-command desc, #(modify-block opts)))
   (ls/show-msg "URL+ loaded ..."))
