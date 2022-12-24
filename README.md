@@ -20,6 +20,10 @@ If the last term is a valid URL, metadata or API response is fetched, then the b
 - `URL+ API -> EDN Code`
 - `URL+ API -> JSON Code`
 - `URL+ Append Definition`
+- `URL+ Extract tweet text of twitter.com`
+  - Twitter developer access token required
+  - Paste the token in the plugin settings panel
+  - For details on the Twitter developer programme, see https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens
 - `URL+ Link Wiktionary URL`
 
 ## Why Another URL Formatter?
