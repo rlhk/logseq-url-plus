@@ -36,4 +36,4 @@ If the last term is a valid URL, metadata or API response is fetched, then the b
 
 ## Plugin Devevelopment in ClojureScript
 
-See [technical notes](./docs/dev-notes.md).
+See [technical notes](./doc/dev-notes.md).
