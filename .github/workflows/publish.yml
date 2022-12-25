@@ -23,7 +23,7 @@ jobs:
       - name: Build Code
         run: |
           npm install -g yarn
-          bb compile
+          bb build
           mkdir ${{ env.PLUGIN_NAME }}
           cp package.json README.md demo.gif ${{ env.PLUGIN_NAME }}
           mv dist ${{ env.PLUGIN_NAME }}
