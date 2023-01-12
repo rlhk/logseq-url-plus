@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@logseq/libs": "0.0.12",
-    "link-preview-js": "^3.0.4"
+    "link-preview-js": "^3.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

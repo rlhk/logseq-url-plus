@@ -4,7 +4,8 @@
  [[funcool/promesa "10.0.571"]
   [binaryage/devtools "1.0.6"]
   [medley "1.4.0"]
-  [funcool/cuerdas "2022.03.27-397"]]
+  [funcool/cuerdas "2022.03.27-397"]
+  [rum "0.12.10"]]
  :dev-http {8080 "dist"}
  :nrepl {:port 8702
          :init-ns core}

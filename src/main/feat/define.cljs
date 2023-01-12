@@ -1,6 +1,7 @@
-(ns define
+(ns feat.define
+  "Feature of appending dictionary definitions."
   (:require
-    [cuerdas.core :as str]))
+   [cuerdas.core :as str]))
 
 (defn fmt-phonetic [phonetic]
   (cond 
