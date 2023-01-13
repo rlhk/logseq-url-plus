@@ -22,7 +22,7 @@
     "shadow-cljs": "2.20.13"
   },
   "dependencies": {
-    "@logseq/libs": "0.0.12",
+    "@logseq/libs": "0.0.14",
     "link-preview-js": "^3.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

@@ -69,6 +69,8 @@
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/settings-schema))
+  (js/logseq.on "ui:visible:changed" #(prn "visibility: " %))
+  (js/logseq.on "settings:changed" #(prn "settings: " %))
   (doseq [{:keys [desc] :as opts} config/commands]
     (ls/register-slash-command desc, #(modify-block opts)))
   (println "URL+ Mounting UI ...")
