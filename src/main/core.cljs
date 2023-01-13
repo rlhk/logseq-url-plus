@@ -69,12 +69,17 @@
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/settings-schema))
-  (js/logseq.on "ui:visible:changed" #(prn "visibility: " %))
+  (js/logseq.on "ui:visible:changed" 
+                (fn [v]
+                  (let [v (js->clj v :keywordize-keys true)]
+                    (prn "Main UI visibility: " v)
+                    (when (true? (:visible v))
+                      (println "URL+ Mounting UI ...")
+                      (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))))))
   (js/logseq.on "settings:changed" #(prn "settings: " %))
   (doseq [{:keys [desc] :as opts} config/commands]
     (ls/register-slash-command desc, #(modify-block opts)))
-  (println "URL+ Mounting UI ...")
-  (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
+  
   ;; (js/logseq.setMainUIInlineStyle (clj->js {}))
   (ls/show-msg "URL+ loaded ..."))
 
