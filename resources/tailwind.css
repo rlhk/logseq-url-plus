@@ -2,12 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-    html, body {
-        /* @apply bg-transparent; */
-    }
-}
-
 .url-plus-box {
     background: lightgoldenrodyellow;
     padding: 1em;

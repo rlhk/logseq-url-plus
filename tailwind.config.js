@@ -2,7 +2,7 @@ const { transparent } = require('daisyui/src/colors');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./dist/**/*.{html,js}"],
+  // content: ["./dist/**/*.{html,js}"],
   theme: {
     extend: {},
     container: {
@@ -11,7 +11,6 @@ module.exports = {
   },
   plugins: [require("daisyui")],
   daisyui: {
-    // base: false,
     themes: [
       {
         light: {
