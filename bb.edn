@@ -3,19 +3,23 @@
  {:requires ([cheshire.core :as json])
   :init (do (defn x [& cmds] (doseq [cmd cmds] (shell cmd)))
             (def v (-> (slurp "package.json") (json/parse-string true) :version)))
-  test    {:doc "Standalone testing"
-           :task (x "npx shadow-cljs release test")}
-  dev     {:doc "Start local dev. Watches source code and unit tests"
-           :task (x "rm -fr dist out"
-                    "mkdir dist", "cp -R resources/. dist/"
-                    "yarn", "npx shadow-cljs watch :plugin :test")}
-  build   {:doc "Advance compilation of code ready for release"
-           :task (x "rm -fr dist out"
-                    "mkdir dist", "cp -R resources/. dist/"
-                    "yarn", "npx shadow-cljs release :plugin")}
-  release {:doc "Tag version and push to GitHub for triggering build and release workflow"
-           :task (do (println "Releasing version:" v "...")
-                     (x (format "git tag -a %s -m \"Release version: %s\"" v v)
-                        (format "git push origin %s" v)))}}}
+  test     {:doc "Standalone testing."
+            :task (x "npx shadow-cljs release test")}
+  dev-tw   {:doc "tailwindcss dev watch."
+            :task (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")}
+  build-tw {:doc "tailwindcss prod build."
+            :task (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")}
+  dev      {:doc "Dev mode. Watch source code and unit tests."
+            :task (x "rm -fr dist out"
+                     "mkdir dist", "cp -R resources/. dist/"
+                     "yarn", "npx shadow-cljs watch :plugin :test")}
+  build    {:doc "Advance compilation of code ready for release."
+            :task (x "rm -fr dist out"
+                     "mkdir dist", "cp -R resources/. dist/"
+                     "yarn", "npx shadow-cljs release :plugin")}
+  release  {:doc "Tag version and push to GitHub for triggering build and release workflow."
+            :task (do (println "Releasing version:" v "...")
+                      (x (format "git tag -a %s -m \"Release version: %s\"" v v)
+                         (format "git push origin %s" v)))}}}
 
 
