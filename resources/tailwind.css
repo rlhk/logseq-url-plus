@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+.url-plus-backdrop {
+    backdrop-filter: blur(1px);
+}
 .url-plus-box {
     background: lightgoldenrodyellow;
     padding: 1em;

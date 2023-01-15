@@ -94,4 +94,5 @@
 
 (defn reload []
   (println "... core.reload!")
+  (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
   #_(init))
