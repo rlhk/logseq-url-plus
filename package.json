@@ -13,10 +13,7 @@
     "favicon": "dist/favicon.ico"
   },
   "scripts": {
-    "test": "npx shadow-cljs watch :test",
-    "dev": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs watch :plugin :test",
-    "compile": "rm -fr ./dist ./out/* && yarn && mkdir ./dist &&  cp resources/* ./dist/ && npx shadow-cljs release :plugin",
-    "release": "./scripts/release.sh"
+    "tasks": "echo 'Please use babashka tasks defined in bb.edn. (https://babashka.org)'"
   },
   "devDependencies": {
     "shadow-cljs": "2.20.13"

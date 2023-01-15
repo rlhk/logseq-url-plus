@@ -3,19 +3,19 @@
  {:requires ([cheshire.core :as json])
   :init (do (defn x [& cmds] (doseq [cmd cmds] (shell cmd)))
             (def v (-> (slurp "package.json") (json/parse-string true) :version)))
-  prep     (x "rm -fr dist out", "mkdir dist", "cp -R resources/. dist/")
-  test     (x "npx shadow-cljs release test")
-  dev-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
-  dev-cljs {:task (x "yarn", "npx shadow-cljs watch :plugin :test")
-            :depends [prep]}
-  -dev     {:depends [dev-cljs dev-tw]}
-  dev      (run '-dev {:parallel true})
-  build-tw (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")
-  build    {:task (x "yarn", "npx shadow-cljs release :plugin")
-            :depends [prep build-tw]}
-  release  {:doc "Add version tag; push to GitHub for triggering build and release workflow."
-            :task (do (println "Releasing version:" v "...")
-                      (x (format "git tag -a %s -m \"Release version: %s\"" v v)
-                         (format "git push origin %s" v)))}}}
+  test       (x "npx shadow-cljs release test")
+  prep       (x "rm -fr dist out", "mkdir dist", "cp -R resources/. dist/")
+  watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
+  watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
+  -dev       {:depends [watch-cljs watch-tw]}
+  dev        {:depends [prep] 
+              :task (run '-dev {:parallel true})}
+  build-cljs (x "yarn", "npx shadow-cljs release :plugin")
+  build-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")
+  build      {:depends [prep build-cljs build-tw]}
+  release    {:doc "Add version tag; push to GitHub for triggering build and release workflow."
+              :task (do (println "Releasing version:" v "...")
+                        (x (format "git tag -a %s -m \"Release version: %s\"" v v)
+                           (format "git push origin %s" v)))}}}
 
 

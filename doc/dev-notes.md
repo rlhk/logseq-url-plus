@@ -91,7 +91,7 @@ Now the REPL is ready for action!
 
 - Update the "version" field in `package.json`
 - `bb release`
-  - It runs the script `./scripts/release.sh`, which reads the said "version" field as the git tag to be added. Upon repository pushing to GitHub, the new tag will trigger GitHub workflow to build the assets of a new release.
+  - The babashka task reads the "version" field in `package.json` and add it as a new git tag. Upon tag pushing to GitHub, GitHub workflow will build a new release to be picked up by Logseq marketplace.
 
 #### New Marketplace Submission
 

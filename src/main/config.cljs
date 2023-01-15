@@ -1,13 +1,13 @@
 (ns config)
 
-(def settings-schema
+(def ls-plugin-settings
   [{:key "TwitterAccessToken"
     :type "string"
     :title "Twitter Access Token"
     :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
     :default ""}])
 
-(def commands
+(def slash-commands
   [{:desc "URL+ [title](url)"
     :type :meta ; Supported response types: (or :meta :api :api/define :link/define)
     ;; 2 modes are supported: 
@@ -57,3 +57,9 @@
    {:desc "URL+ Link Wiktionary URL"
     :type :link/define
     :block "%(but-last)s[%(term)s](%(url)s)"}])
+
+(defonce db 
+  (atom 
+   {:slash-commands slash-commands
+    :ls-plugin-settings ls-plugin-settings}))
+
