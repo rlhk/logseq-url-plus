@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 .url-plus-backdrop {
-    backdrop-filter: blur(1px);
+    backdrop-filter: blur(10px);
 }
 .url-plus-box {
     background: lightgoldenrodyellow;
