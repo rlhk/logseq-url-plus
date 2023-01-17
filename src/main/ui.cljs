@@ -3,11 +3,12 @@
    [rum.core :as rum]
    [clojure.pprint :refer [pprint]]
    [cuerdas.core :as str]
-   [config :refer [db]]))
+   [config :refer [db]]
+   [clojure.math :as math]))
 
 (def dummy
   (for [i (range 10)]
-    (range 10)))
+    (map #(math/sin %) (range 5))))
 
 #_{:clj-kondo/ignore [:unresolved-symbol]}
 (rum/defc plugin-panel < rum/reactive []
@@ -21,7 +22,6 @@
      [:input {:type "text"
               :class "input w-full"
               :placeholder "Type here"}]]
-    [:div.divider]
     #_[:pre (with-out-str (pprint (:slash-commands (rum/react db))))]
     [:div {:class "flex items-center justify-center overflow-x-hidden"}
      [:ul
@@ -30,8 +30,7 @@
         #_[:input {:id k :data-title d :type "radio" :name "fruit" :class "btn"}]
         [:li
          [:a {:key k} d]])]]
-    [:div.divider]
-    [:div {:class "flex items-center justify-center overflow-x-hidden"}
+    [:div {:class "p-4 flex items-center justify-center overflow-x-hidden"}
      [:.overflow-x-auto
       [:table.table.table-compact.w-full
        [:thead
@@ -43,10 +42,8 @@
           [:tr
            (for [j i]
              [:td {:class "p-1"} j])])]]]]
-    [:div.divider]
     [:textarea.textarea
      {:placeholder "bio"}]
-    [:div.divider]
     [:.w-full.items-center.justify-center.flex.p-4
      [:button {:class "btn btn-sm btn-info"
                :on-click #(do (println "clicked...")
