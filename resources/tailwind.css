@@ -6,7 +6,7 @@
     backdrop-filter: blur(10px);
 }
 .url-plus-box {
-    background: lightgoldenrodyellow;
+    background: rgb(17, 91, 144);
     padding: 1em;
     border-radius: 0.5em;
     border-width: 1px;
