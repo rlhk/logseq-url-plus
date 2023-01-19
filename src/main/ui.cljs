@@ -11,21 +11,33 @@
   (.toFixed number places))
 
 (def features
-  [[:a "Apple"] [:b "Banana"] [:c "Banana"] [:d "daisy"] [:e "etch"]])
+  [[:website "Website"] [:api "API"] [:term "Term"]])
 
-(rum/defc sin-table [aa]
-  [:div {:class "p-4"}
+(rum/defc sin-table [tabledata]
+  [:.p-4.w-full
    [:.overflow-x-auto
     [:table.table.table-compact.w-full
      [:thead
       [:tr
-       (for [i (first aa)]
+       (for [i (first tabledata)]
          [:th {:class "p-1"} i])]]
      [:tbody
-      (for [i aa]
+      (for [i tabledata]
         [:tr
          (for [j i]
            [:td {:class "p-1"} j])])]]]])
+
+(rum/defc website-metadata [data]
+  [:.p-4.w-full
+   (str data)])
+
+(rum/defc api-metadata [data]
+  [:.p-4.w-full
+   (str data)])
+
+(rum/defc term-metadata [data]
+  [:.p-4.w-full
+   (str data)])
 
 (def dummy
   (for [i (range 10)]
@@ -37,8 +49,8 @@
 (rum/defc api-output []
   [:.w-full "2"])
 
-(rum/defc common-header [buttongrp]
-  [:.w-full.p-4
+(rum/defc common-header [button-group]
+  [:.w-full
    [:h1 "URL+"]
    [:div
     {:class "grid h-20 place-items-center"}
@@ -49,14 +61,18 @@
    [:div {:class "flex items-center justify-center overflow-x-hidden"}
     [:ul
      {:class "menu menu-horizontal bg-base-100 rounded-box"}
-     (for [[k d] buttongrp]
+     (for [[k d] button-group]
        #_[:input {:id k :data-title d :type "radio" :name "fruit" :class "btn"}]
        [:li
-        [:a {:key k} d]])]]]
+        [:a {:key k
+             :on-click #(do
+                          (println ":key" k)
+                          (swap! db assoc-in [:ui :term-type] k))}
+         d]])]]]
   )
 
 (rum/defc output-carousel [components]
-  [:.w-64.carousel.rounded-box
+  [:.w-full.carousel.p-4.items-center
    (for [c components] 
      [:.carousel-item.w-full
       c])])
@@ -77,18 +93,22 @@
 #_{:clj-kondo/ignore [:unresolved-symbol]}
 (rum/defc plugin-panel < rum/reactive []
   (println "Mounting logseq url+ advanced UI ...")
-  [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
-   [:div.url-plus-box
-    {:class "flex flex-col border-opacity-50"}
-    (common-header features)
-    (sin-table dummy)
-    [:textarea.textarea
-     {:placeholder "bio"}]
-    (output-carousel
-     [(site-output) (api-output) (sin-table dummy) (sin-table dummy)])
-    (confirmation)]])
-
-
+  (let [ui (:ui (rum/react db))]
+    (println (str ui))
+    [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
+     [:div.url-plus-box
+      {:class "flex flex-col border-opacity-50"}
+      (common-header features)
+      (case (:term-type ui)
+        :api (api-metadata {:name "api"})
+        :term (term-metadata {:name "term"})
+        (website-metadata {:a "ape" :b "bean" :c "crazy"}))
+      #_(sin-table dummy)
+      [:textarea.textarea
+       {:placeholder "bio"}]
+      #_(output-carousel
+         [(sin-table dummy) (sin-table dummy) (site-output) (api-output) (sin-table dummy)])
+      (confirmation)]]))
 
 (comment
   (in-ns 'ui)

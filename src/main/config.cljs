@@ -1,5 +1,11 @@
 (ns config)
 
+(defonce db 
+  (atom
+   {;:slash-commands slash-commands
+    ;:ls-plugin-settings ls-plugin-settings
+    :ui {:term-type :website}}))
+
 (def ls-plugin-settings
   [{:key "TwitterAccessToken"
     :type "string"
@@ -15,7 +21,7 @@
     ;; :block (use :api-blocks attrs) as children blocks. Ignore :child template )
     :mode :template
     :block "%(but-last)s[%(title)s](%(url)s)"}
-   {:desc "URL+ Advanced ..."
+   #_{:desc "URL+ Advanced ..."
     :op :advanced} ;; defaults to :default
    {:desc "URL+ [title](url) description"
     :type :meta
@@ -57,9 +63,3 @@
    {:desc "URL+ Link Wiktionary URL"
     :type :link/define
     :block "%(but-last)s[%(term)s](%(url)s)"}])
-
-(defonce db 
-  (atom 
-   {:slash-commands slash-commands
-    :ls-plugin-settings ls-plugin-settings}))
-
