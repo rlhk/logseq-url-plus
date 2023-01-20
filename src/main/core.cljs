@@ -67,6 +67,10 @@
                 (when child (ls/insert-block block-uuid, (str/fmt child attrs))))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-term)))))
 
+(defn advanced-command []
+  (println "URL+ Advanced Mode ...")
+  (js/logseq.showMainUI))
+
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
   (js/logseq.on "ui:visible:changed" 
@@ -79,7 +83,7 @@
   (js/logseq.on "settings:changed" #(prn "settings: " %))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(modify-block opts)))
-  
+  (ls/register-slash-command "URL+ Advanced ..." #(advanced-command))
   ;; (js/logseq.setMainUIInlineStyle (clj->js {}))
   (ls/show-msg "URL+ loaded ..."))
 
