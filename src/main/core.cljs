@@ -55,21 +55,23 @@
                           :tweet-time  (-> api-edn (get-in [:data 0 :created_at]))
                           :tweet-author (-> api-edn (get-in [:includes :users 0 :username]))
                           :but-last    all-but-last}]
-          (if (= op :advanced)
-            (do
-              (println "URL+ Advanced Mode ...")
-              (js/logseq.showMainUI))
-            (do
-              (println "URL+ Formatting block(s) ...")
-              (when block (ls/update-block block-uuid, (str/fmt block attrs)))
-              (if (= mode :block)
-                (ls/insert-batch-block block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
-                (when child (ls/insert-block block-uuid, (str/fmt child attrs))))))))
+          (do
+            (println "URL+ Formatting block(s) ...")
+            (when block (ls/update-block block-uuid, (str/fmt block attrs)))
+            (if (= mode :block)
+              (ls/insert-batch-block block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
+              (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-term)))))
 
 (defn advanced-command []
   (println "URL+ Advanced Mode ...")
-  (js/logseq.showMainUI))
+  (js/logseq.showMainUI)
+  (p/let [current-block (ls/get-current-block)
+          block-uuid    (aget current-block "uuid")
+          block-content (ls/get-editing-block-content)
+          [all-but-last, last-token] (else-and-last block-content)
+          [maybe-label, url]  (api/md-link->label-and-url last-token)]
+    (swap! config/plugin-state assoc :token last-token)))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
@@ -84,7 +86,6 @@
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(modify-block opts)))
   (ls/register-slash-command "URL+ Advanced ..." #(advanced-command))
-  ;; (js/logseq.setMainUIInlineStyle (clj->js {}))
   (ls/show-msg "URL+ loaded ..."))
 
 ; Logseq handshake

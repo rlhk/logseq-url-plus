@@ -3,7 +3,7 @@
    [rum.core :as rum]
    [clojure.pprint :refer [pprint]]
    [cuerdas.core :as str]
-   [config :refer [db]]
+   [config :refer [plugin-state]]
    [clojure.math :as math]
    [feat.define]))
 
@@ -11,7 +11,7 @@
   (.toFixed number places))
 
 (def features
-  [[:website "Website"] [:api "API"] [:term "Term"]])
+  [[:website "Website"] [:api-endpoint "API Endpoint"] [:word "Word"]])
 
 (rum/defc sin-table [tabledata]
   [:.p-4.w-full
@@ -43,33 +43,21 @@
   (for [i (range 10)]
     (map #(to-fixed (math/sin %) 3) (range 5))))
 
-(rum/defc site-output []
-  [:.w-full "3"])
+(rum/defc token [s]
+  [:p
+   {:class "text-white h-20 place-items-center"}
+   s])
 
-(rum/defc api-output []
-  [:.w-full "2"])
-
-(rum/defc common-header [button-group]
-  [:.w-full
-   [:h1 "URL+"]
-   [:div
-    {:class "grid h-20 place-items-center"}
-    [:input {:type "text"
-             :class "input w-full"
-             :placeholder "Type here"}]]
-   #_[:pre (with-out-str (pprint (:slash-commands (rum/react db))))]
-   [:div {:class "flex items-center justify-center overflow-x-hidden"}
-    [:ul
-     {:class "menu menu-horizontal bg-base-100 rounded-box"}
-     (for [[k d] button-group]
-       #_[:input {:id k :data-title d :type "radio" :name "fruit" :class "btn"}]
-       [:li
-        [:a {:key k
-             :on-click #(do
-                          (println ":key" k)
-                          (swap! db assoc-in [:ui :term-type] k))}
-         d]])]]]
-  )
+(rum/defc semantic-switch < rum/reactive [semantics]
+  (let [active-semantics (:token-semantics (rum/react plugin-state))]
+    [:div {:class "flex items-center justify-center overflow-x-hidden"}
+     [:ul
+      {:class "menu menu-horizontal menu-compact bg-base-100 rounded-box"}
+      (for [[k d] semantics]
+        [:li {:key k}
+         [:a {:class (when (= active-semantics k) "active")
+              :on-click #(swap! plugin-state assoc-in [:token-semantics] k)}
+          d]])]]))
 
 (rum/defc output-carousel [components]
   [:.w-full.carousel.p-4.items-center
@@ -93,28 +81,27 @@
 #_{:clj-kondo/ignore [:unresolved-symbol]}
 (rum/defc plugin-panel < rum/reactive []
   (println "Mounting logseq url+ advanced UI ...")
-  (let [ui (:ui (rum/react db))]
-    (println (str ui))
+  (let [state (rum/react plugin-state)]
+    (println (str state))
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
      [:div.url-plus-box
       {:class "flex flex-col border-opacity-50"}
-      (common-header features)
-      (case (:term-type ui)
-        :api (api-metadata {:name "api"})
-        :term (term-metadata {:name "term"})
+      [:.w-full
+       (token (:token state))
+       (semantic-switch config/token-semantics (:token-semantics state))]
+      (case (:token-semantics state)
+        :api-endpoint (api-metadata {:name "api-endpoint"})
+        :word (term-metadata {:name "word"})
         (website-metadata {:a "ape" :b "bean" :c "crazy"}))
-      #_(sin-table dummy)
       [:textarea.textarea
        {:placeholder "bio"}]
-      #_(output-carousel
-         [(sin-table dummy) (sin-table dummy) (site-output) (api-output) (sin-table dummy)])
       (confirmation)]]))
 
 (comment
   (in-ns 'ui)
   (js/logseq.showMainUI)
   (js/logseq.hideMainUI)
-  (swap! db assoc :slash-commands {:name "Alice"})
-  (swap! db assoc :slash-commands {:name "Bob" :gender :male})
+  (swap! plugin-state assoc :slash-commands {:name "Alice"})
+  (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
   (rum/mount (plugin-panel) (.getElementById js/document "app")))
   

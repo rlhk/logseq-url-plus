@@ -1,10 +1,14 @@
 (ns config)
 
-(defonce db 
+(defonce plugin-state
   (atom
    {;:slash-commands slash-commands
     ;:ls-plugin-settings ls-plugin-settings
-    :ui {:term-type :website}}))
+    :token ""
+    :token-semantics :website}))
+
+(def token-semantics
+  {:website "Website" :api-endpoint "API Endpoint" :word "Word"})
 
 (def ls-plugin-settings
   [{:key "TwitterAccessToken"
