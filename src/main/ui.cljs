@@ -1,49 +1,54 @@
 (ns ui
   (:require 
    [rum.core :as rum]
-   [clojure.pprint :refer [pprint]]
-   [cuerdas.core :as str]
-   [config :refer [plugin-state]]
    [clojure.math :as math]
+   [config :refer [plugin-state]]
+   [util :as u]
    [feat.define]))
 
-(defn to-fixed [number places]
-  (.toFixed number places))
+(defn records? [data]
+  (and
+   (sequential? data)
+   (map? (first data))))
 
-(def features
-  [[:website "Website"] [:api-endpoint "API Endpoint"] [:word "Word"]])
+(defn data->table [data]
+  [:table.table.table-compact.w-full
+   (cond 
+     (map? data)
+     [:<>
+      [:thead [:tr [:th.text-xs "key"], [:th.text-xs "value"]]]
+      [:tbody
+       (for [[k v] data]
+         [:tr [:td.text-xs (name k)], [:td.text-xs (str v)]])]]
 
-(rum/defc sin-table [tabledata]
-  [:.p-4.w-full
-   [:.overflow-x-auto
-    [:table.table.table-compact.w-full
-     [:thead
-      [:tr
-       (for [i (first tabledata)]
-         [:th {:class "p-1"} i])]]
-     [:tbody
-      (for [i tabledata]
-        [:tr
-         (for [j i]
-           [:td {:class "p-1"} j])])]]]])
+     (records? data)
+     (let [headers (keys (first data))]
+       [:<>
+        [:thead [:tr (for [h headers] [:th.text-xs (name h)])]]
+        [:tbody
+         (for [i data]
+           [:tr (for [h headers] 
+                  [:td.text-xs (str (get i h))])])]])
+
+     :else [:tbody [:tr [:td "Invalid API response or unsupported data structure."]]])])
+
 
 (rum/defc website-metadata [data]
-  [:.p-4.w-full
-   (str data)])
+  (data->table data))
 
 (rum/defc api-metadata [data]
   [:.p-4.w-full
    (str data)])
 
-(rum/defc term-metadata [data]
-  [:.p-4.w-full
-   (str data)])
+(rum/defc word-metadata [data]
+  [:table.table.table-compact.w-full
+   [:tbody
+    [:tr [:td
+          (if (u/url? data)
+            "The detected token is an URL."
+            (str data))]]]])
 
-(def dummy
-  (for [i (range 10)]
-    (map #(to-fixed (math/sin %) 3) (range 5))))
-
-(rum/defc token-input [s]
+(rum/defc token-input [t]
   [:.form-control
    [:label.input-group.input-group-xs
     [:span "Token"]
@@ -51,7 +56,7 @@
              :read-only true
              :class "input input-bordered input-xs"
              :style {:width "100%"}
-             :default-value s}]]])
+             :default-value t}]]])
 
 (rum/defc token [s]
   [:div {:class "alert shadow-lg"}
@@ -67,24 +72,16 @@
     [:span s]]])
 
 (rum/defc semantic-tabs < rum/reactive [semantics]
-  (let [active-semantics (:token-semantics (rum/react plugin-state))]
+  (let [active-semantics (:token-semantics (rum/react plugin-state))
+        api-record-count (:api-record-count (rum/react plugin-state))]
     [:.tabs
      (for [[k d] semantics]
-       [:a.tab.tab-sm.tab-lifted
+       [:.tab.tab-sm.tab-lifted.space-x-1
         {:key k :class (when (= active-semantics k) "tab-active")
          :on-click #(swap! plugin-state assoc-in [:token-semantics] k)}
-        d])]))
-
-(rum/defc semantic-switch < rum/reactive [semantics]
-  (let [active-semantics (:token-semantics (rum/react plugin-state))]
-    [:div {:class "flex items-center justify-center overflow-x-hidden"}
-     [:ul
-      {:class "menu menu-horizontal menu-compact bg-base-100 rounded-box"}
-      (for [[k d] semantics]
-        [:li {:key k}
-         [:a {:class (when (= active-semantics k) "active")
-              :on-click #(swap! plugin-state assoc-in [:token-semantics] k)}
-          d]])]]))
+        d
+        (when (and (= k :api-endpoint) api-record-count)
+          [:.badge.badge-xs.ml-2 (str api-record-count)])])]))
 
 (rum/defc output-carousel [components]
   [:.w-full.carousel.p-4.items-center
@@ -109,18 +106,19 @@
   (let [state (rum/react plugin-state)]
     (println (str state))
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
-     [:div.url-plus-box {:class "card w-96 bg-base-100 shadow-xl"}
-      [:.items-center.text-center
+     [:div.url-plus-box {:class "card w-3/5 bg-base-100 shadow-xl"}
+      [:.items-center.text-center.space-y-2
        (token-input (:token state))
-       [:hr {:style {:height "0.5em"}}]
+       [:div.w-full.text-sm.text-left "What's the semantics of the token?"]
        (semantic-tabs config/token-semantics (:token-semantics state))
-       (case (:token-semantics state)
-         :api-endpoint (api-metadata {:name "api-endpoint"})
-         :word (term-metadata {:name "word"})
-         (website-metadata {:a "ape" :b "bean" :c "crazy"}))
+       [:.overflow-x-auto.max-h-80
+        (case (:token-semantics state)
+          :api-endpoint (website-metadata (:api-edn state))
+          :word (word-metadata (:token state)) 
+          (website-metadata (:meta-edn state)))]
        [:textarea.textarea.w-full
-        {:placeholder "Attributes ..."}]
-       [:.card-actions.justify-end
+        {:placeholder "TODO: Custom template ..."}]
+       [:.card-actions.justify-center
         [:button {:class "btn btn-sm btn-primary"
                   :on-click #(do (println "clicked...")
                                  (js/logseq.hideMainUI))}

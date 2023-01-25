@@ -21,7 +21,8 @@
            :modules  {:index {:init-fn core/init}}
            :devtools {:preloads [devtools.preload]
                       :after-load core/reload
-                      :repl-pprint true}
+                      :repl-pprint true
+                      :watch-dir "dist"} ; Doesn't work for Logseq dev mode. Have to reload plugin.
            :dev {}
            :release {:compiler-options {:optimizations :advanced}}}
   :test {:target    :node-test ; simple TDD than browser-test dependency setup

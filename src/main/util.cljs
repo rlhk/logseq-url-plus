@@ -34,3 +34,6 @@
   (->> (str/rtrim s)
        (re-find #"(?is)(.*?\s*)(\[.*?\]\(.*?\)|\S+?)$")
        rest))
+
+(defn to-fixed [number places]
+  (.toFixed number places))

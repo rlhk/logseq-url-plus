@@ -7,7 +7,7 @@
    ["@logseq/libs"]
    ["link-preview-js" :as link-preview]
    [util :refer [decode-html-content ednize url? else-and-last]]
-   [ls] [config] [api] [ui]
+   [ls] [config :refer [plugin-state]] [api] [ui]
    [feat.define :as define]))
 
 (defn modify-block [{:keys [op type mode block child] 
@@ -71,7 +71,28 @@
           block-content (ls/get-editing-block-content)
           [all-but-last, last-token] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-token)]
-    (swap! config/plugin-state assoc :token last-token)))
+    (reset! plugin-state {})
+    (swap! plugin-state assoc :token last-token)
+    (if (url? url)
+      (do
+        (swap! plugin-state assoc :token-semantics :website)
+        (swap! plugin-state assoc :meta-edn "Loading ...")
+        (p/let [meta-res (.getLinkPreview link-preview url)
+                meta-edn (ednize meta-res)
+                auth (cond
+                       (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
+                       :else nil)
+                api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                             (p/then   #(.json %))
+                             (p/catch  #(js/console.log %)))
+                api-edn  (ednize api-res)]
+          (swap! plugin-state assoc :meta-json (js/JSON.stringify meta-res nil 2))
+          (swap! plugin-state assoc :meta-edn meta-edn)
+          (swap! plugin-state assoc :api-json (js/JSON.stringify api-res nil 2))
+          (swap! plugin-state assoc :api-edn api-edn)
+          (swap! plugin-state assoc :api-record-count (count api-edn))))
+      (do
+        (swap! plugin-state assoc :token-semantics :word)))))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
