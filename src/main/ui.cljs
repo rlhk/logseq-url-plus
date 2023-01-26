@@ -27,7 +27,7 @@
            [:tr (for [h headers] 
                   [:td.text-xs (str (get i h))])])]])
 
-     :else [:tbody [:tr [:td "Invalid API response or unsupported data structure."]]])])
+     :else [:tbody [:tr [:td "Unsupported data structure."]]])])
 
 (rum/defc word-metadata [data]
   [:table.table.table-compact.w-full
