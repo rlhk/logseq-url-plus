@@ -9,6 +9,8 @@
 
 This shadow-cljs project is created by following: https://github.com/thheller/shadow-cljs#quick-start. Notes below:
 
+> **NOTE:** The following assumes macOS development environment.
+
 #### Project Creation
 New project is created from shadow-cljs boilerplate
 
@@ -84,6 +86,12 @@ Try evaluate a few forms in the REPL.
 `(show-msg "Hello Logseq")` Run the defined Clojure fn `show-msg` in namespace `core` to display Logseq App message.
 
 Now the REPL is ready for action!
+
+#### Manual reload
+
+In case the hot reload does not fully reflect recent code change, or the app state is stuck, the rich comment block at the end of `ui.cljs` contain expressions which might help.
+
+Given a REPL Setup in VSCode as specified above, evaluating expressions can be done by placing the cursor inside the expression and pressing `option + enter`.
 
 ### Marketplace
 
