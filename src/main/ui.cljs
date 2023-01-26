@@ -48,14 +48,13 @@
       :default-value t}]]])
 
 (rum/defc semantic-tabs < rum/reactive [semantics]
-  (let [state (rum/react plugin-state)
-        active-semantics (:token-semantics state)
-        {:keys [token api-edn meta-edn api-record-count]} state]
+  (let [{:keys [token token-semantics api-edn meta-edn api-record-count]} 
+        (rum/react plugin-state)]
     [:.tabs
      (for [[k desc] semantics]
        [:.tab.tab-sm.tab-lifted.space-x-1
         {:key k
-         :class (when (= active-semantics k) "tab-active")
+         :class (when (= token-semantics k) "tab-active")
          :on-click #(swap! plugin-state assoc :token-semantics k)}
         desc
         (when (and (= k :website), (not meta-edn))
@@ -98,7 +97,10 @@
   (in-ns 'ui)
   (js/logseq.showMainUI)
   (js/logseq.hideMainUI)
+  (rum/mount (plugin-panel) (.getElementById js/document "app"))
   (swap! plugin-state assoc :slash-commands {:name "Alice"})
   (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
-  (rum/mount (plugin-panel) (.getElementById js/document "app")))
+  ;; LSPluginCore.reload("logseq-url-plus")
+  (.reload js/top.LSPluginCore "logseq-url-plus")
+  (js-invoke js/top.LSPluginCore "reload" "logseq-url-plus"))
   
