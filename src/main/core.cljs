@@ -8,19 +8,20 @@
    ["link-preview-js" :as link-preview]
    [util :refer [decode-html-content ednize url? else-and-last]]
    [ls] [config :refer [plugin-state]] [api] [ui]
-   [feat.define :as define]))
+   [feat.define :as define]
+   [util :as u]))
 
 (defn modify-block [{:keys [op type mode block child] 
                      :or   {op :default, mode :template}}]
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
           block-content (ls/get-editing-block-content)
-          [all-but-last, last-term] (else-and-last block-content)
-          [maybe-label, url]  (api/md-link->label-and-url last-term)
+          [all-but-last, last-token] (else-and-last block-content)
+          [maybe-label, url]  (api/md-link->label-and-url last-token)
           url
           (cond ; we may have other types in the future
-            (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-term)
-            (= type :link/define) (str "https://en.wiktionary.org/wiki/" last-term)
+            (= type :api/define)  (str "https://api.dictionaryapi.dev/api/v2/entries/en/" last-token)
+            (= type :link/define) (str "https://en.wiktionary.org/wiki/" last-token)
             (= type :api/tweet)
             (str "https://api.twitter.com/2/tweets/?tweet.fields=created_at&expansions=author_id&user.fields=created_at&ids="
                  (-> url (str/split #"/") last))
@@ -35,10 +36,14 @@
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (ednize meta-res)
                 api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                             (p/then   #(.json %))
+                             (p/then #(identity %))
                              (p/catch  #(js/console.log %)))
-                api-edn  (ednize api-res)
-                attrs    {:term        last-term
+                json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
+                api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                                         (p/then   #(.json %))
+                                         (p/catch  #(js/console.log %))))
+                api-edn  (when json? (ednize api-json))
+                attrs    {:token       last-token
                           :url         url
                           :link-or-url (if maybe-label (str/fmt "[$0]($1)" [maybe-label url]), url)
                           :title       (-> (:title meta-edn) decode-html-content)
@@ -48,7 +53,7 @@
                           :meta-json   (js/JSON.stringify meta-res nil 2) ;built-in prettify
                           :meta-attrs  (api/edn->logseq-attrs meta-edn)
                           :api-edn     (-> api-edn pprint with-out-str)
-                          :api-json    (js/JSON.stringify api-res nil 2)
+                          :api-json    (js/JSON.stringify api-json nil 2)
                           :api-attrs   (api/edn->logseq-attrs api-edn)
                           :api-blocks  (api/edn->logseq-blocks api-edn)
                           :tweet-text  (-> api-edn (get-in [:data 0 :text]))
@@ -61,7 +66,7 @@
             (if (= mode :block)
               (ls/insert-batch-block block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
-      (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-term)))))
+      (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
 (defn advanced-command []
   (println "URL+ Advanced Mode ...")
@@ -72,25 +77,36 @@
           [all-but-last, last-token] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-token)]
     (reset! plugin-state {})
-    (swap! plugin-state assoc :token last-token)
+    (swap! plugin-state assoc 
+           :token last-token 
+           :but-last all-but-last 
+           :maybe-label maybe-label
+           :url url
+           :block-uuid block-uuid)
     (if (url? url)
       (do
-        (swap! plugin-state assoc :token-semantics :website)
-        (swap! plugin-state assoc :meta-edn "Loading ...")
+        (swap! plugin-state 
+               merge {:token-semantics :website
+                      :meta-edn "Loading ..."})
         (p/let [meta-res (.getLinkPreview link-preview url)
                 meta-edn (ednize meta-res)
                 auth (cond
                        (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
                        :else nil)
                 api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                             (p/then   #(.json %))
+                             (p/then #(identity %))
                              (p/catch  #(js/console.log %)))
-                api-edn  (ednize api-res)]
-          (swap! plugin-state assoc :meta-json (js/JSON.stringify meta-res nil 2))
-          (swap! plugin-state assoc :meta-edn meta-edn)
-          (swap! plugin-state assoc :api-json (js/JSON.stringify api-res nil 2))
-          (swap! plugin-state assoc :api-edn api-edn)
-          (swap! plugin-state assoc :api-record-count (count api-edn))))
+                json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
+                api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                                         (p/then   #(.json %))
+                                         (p/catch  #(js/console.log %))))
+                api-edn  (when json? (ednize api-json))]
+          (swap! plugin-state
+                 merge {:meta-json (js/JSON.stringify meta-res nil 2)
+                        :meta-edn meta-edn
+                        :api-json (js/JSON.stringify api-json nil 2)
+                        :api-edn api-edn
+                        :api-record-count (count api-edn)})))
       (do
         (swap! plugin-state assoc :token-semantics :word)))))
 

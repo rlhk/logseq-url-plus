@@ -3,6 +3,7 @@
    [rum.core :as rum]
    [config :refer [plugin-state]]
    [util :as u]
+   [cuerdas.core :as str]
    [feat.define]))
 
 (defn records? [data]
@@ -26,8 +27,11 @@
          (for [i data]
            [:tr (for [h headers] 
                   [:td.text-xs (str (get i h))])])]])
-
-     :else [:tbody [:tr [:td "Unsupported data structure."]]])])
+     
+     :else [:tbody 
+            [:tr [:td 
+                  (if (some? data) 
+                    (str data) "No metadata/data or invalid format")]]])])
 
 (rum/defc word-metadata [data]
   [:table.table.table-compact.w-full
@@ -44,6 +48,7 @@
     [:input.input.input-bordered.input-xs 
      {:type "text"
       :read-only true
+      :placeholder (when (str/empty? t) "No token detected")
       :style {:width "100%"}
       :default-value t}]]])
 
@@ -78,7 +83,7 @@
      [:div.url-plus-box {:class "card w-3/5 bg-base-100 shadow-xl"}
       [:.items-center.text-center.space-y-2
        (token-input (:token state))
-       [:div.w-full.text-sm.text-left "Token semantics:"]
+       [:div.w-full.text-sm.text-left "Select token type:"]
        (semantic-tabs config/token-semantics (:token-semantics state))
        [:.overflow-x-auto.max-h-80
         (case (:token-semantics state)
@@ -95,6 +100,7 @@
 
 (comment
   (in-ns 'ui)
+  plugin-state  
   (js/logseq.showMainUI)
   (js/logseq.hideMainUI)
   (rum/mount (plugin-panel) (.getElementById js/document "app"))
@@ -102,5 +108,6 @@
   (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
   ;; LSPluginCore.reload("logseq-url-plus")
   (.reload js/top.LSPluginCore "logseq-url-plus")
-  (js-invoke js/top.LSPluginCore "reload" "logseq-url-plus"))
+  (js-invoke js/top.LSPluginCore "reload" "logseq-url-plus")
+  )
   

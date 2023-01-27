@@ -1,5 +1,6 @@
 (ns util
   (:require
+   [clojure.walk :refer [keywordize-keys]]
    [medley.core :refer [filter-vals]]
    [cuerdas.core :as str]
    [goog.html.textExtractor :as gtext]))
@@ -15,6 +16,26 @@
   (try
     (do (js/URL. s) true)
     (catch js/Object e false)))
+
+(defn content-type
+  "Returns a map of :mime-type and :charset from http Content-Type string
+   say: 'application/json; charset=utf-8'
+   TODO: Better use proper http client lib"
+  [s]
+  (->> (str/trim s)
+       (re-find #"(.*?);\s*(.*?)$")
+       rest
+       (#(into {:mime-type (first %)}
+               (vector (-> % second (str/split #"=")))))
+       keywordize-keys))
+
+(defn json-response? 
+  [content-type-str]
+  (= "application/json" (:mime-type (content-type content-type-str))))
+
+(comment
+  (content-type "application/json; charset=utf-8")
+  (json-response? "application/json; charset=utf-8"))
 
 (defn nested? [data]
   (cond
