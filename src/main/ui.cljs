@@ -9,37 +9,33 @@
 (defn records? [data]
   (and (sequential? data), (map? (first data))))
 
-(defn data-table [data]
-  [:table.table.table-compact.w-full
-   (cond 
-     (map? data)
-     [:<>
-      [:thead [:tr [:th.text-xs "key"], [:th.text-xs "value"]]]
-      [:tbody
-       (for [[k v] data]
-         [:tr [:td.text-xs (name k)], [:td.text-xs (str v)]])]]
+(defn data-table 
+  ([data] (data-table nil data))
+  ([caption data]
+   [:table.table.table-compact.w-full
+    (when caption 
+      [:caption.p-1.text-sm.text-left.font-semibold.text-gray-900 caption])
+    (cond 
+      (map? data)
+      [:<>
+       [:thead [:tr [:th.text-xs "key"], [:th.text-xs "value"]]]
+       [:tbody
+        (for [[k v] data]
+          [:tr [:td.text-xs (name k)], [:td.text-xs (str v)]])]]
 
-     (records? data)
-     (let [headers (keys (first data))]
-       [:<>
-        [:thead [:tr (for [h headers] [:th.text-xs (name h)])]]
-        [:tbody
-         (for [i data]
-           [:tr (for [h headers] 
-                  [:td.text-xs (str (get i h))])])]])
-     
-     :else [:tbody 
-            [:tr [:td 
-                  (if (some? data) 
-                    (str data) "No metadata/data or invalid format")]]])])
-
-(rum/defc word-metadata [data]
-  [:table.table.table-compact.w-full
-   [:tbody
-    [:tr [:td
-          (if (u/url? data)
-            "The selected token is not a word but an URL."
-            (str data))]]]])
+      (records? data)
+      (let [headers (keys (first data))]
+        [:<>
+         [:thead [:tr (for [h headers] [:th.text-xs (name h)])]]
+         [:tbody
+          (for [i data]
+            [:tr (for [h headers] 
+                   [:td.text-xs (str (get i h))])])]])
+      
+      :else [:tbody 
+             [:tr [:td 
+                   (if (some? data) 
+                     (str data) "No metadata/data or invalid format")]]])]))
 
 (rum/defc token-input [t]
   [:.form-control
@@ -51,6 +47,42 @@
       :placeholder (when (str/empty? t) "No token detected")
       :style {:width "100%"}
       :default-value t}]]])
+
+(def block-attrs [:block-content :block-content-before-token :token #_:url :token-label])
+(rum/defc block-attrs-view [state]
+  (data-table
+   "Block & Token Attributes"
+   (select-keys state block-attrs)))
+
+(rum/defc website-view [state]
+  [:<>
+   [:.overflow-x-auto.max-h-64
+    (data-table (:meta-edn state))]
+   [:input.input.w-full.text-slate-400
+    {:placeholder "Template for block content ..."
+     :value (or (:block-template state) "")
+     :on-change #(swap! plugin-state assoc :block-template (.. % -target -value))}]
+   [:p.text-xs.text-left
+    (str/fmt (or (:block-template state) "") 
+             (merge (select-keys state block-attrs) (:meta-edn state)))]
+   [:input.input.w-full.text-slate-400
+    {:placeholder "Template for block child ..."
+     :value (or (:block-child-template state) "")
+     :on-change #(swap! plugin-state assoc :block-child-template (.. % -target -value))}]])
+
+(rum/defc api-view [state]
+  [:.overflow-x-auto.max-h-64
+   (data-table (:api-edn state))])
+
+(rum/defc word-view [state]
+  (let [token (:token state)]
+    [:.overflow-x-auto.max-h-64
+     [:table.table.table-compact.w-full
+      [:tbody
+       [:tr [:td
+             (if (u/http? token)
+               "The token is a http(s) URL. Not a word."
+               (str token))]]]]]))
 
 (rum/defc semantic-tabs < rum/reactive [semantics]
   (let [{:keys [token token-semantics api-edn meta-edn api-record-count]} 
@@ -71,43 +103,38 @@
             [:.badge.badge-info.badge-xs.ml-2 (str api-record-count)]
             :else nil))
         (when (and (= k :word)
-                   (u/url? token))
+                   (u/http? token))
           [:.badge.badge-error.badge-xs.ml-2 "!"])])]))
 
-#_{:clj-kondo/ignore [:unresolved-symbol]}
 (rum/defc plugin-panel < rum/reactive []
   (println "Mounting Logseq URL+ UI ...")
   (let [state (rum/react plugin-state)]
     ;; (println (str state))
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
-     [:div.url-plus-box {:class "card w-3/5 bg-base-100 shadow-xl"}
+     [:div#url-plus-modal.url-plus-box.card.bg-base-100.shadow-xl {:class "w-3/5"}
       [:.items-center.text-center.space-y-2
        (token-input (:token state))
-       [:div.w-full.text-sm.text-left "Select token type:"]
-       (semantic-tabs config/token-semantics (:token-semantics state))
        [:.overflow-x-auto.max-h-80
-        (case (:token-semantics state)
-          :api-endpoint (data-table (:api-edn state))
-          :word (word-metadata (:token state)) 
-          (data-table (:meta-edn state)))]
-       [:textarea.textarea.w-full
-        {:placeholder "TODO: Custom template ..."}]
+        (block-attrs-view state)]
+       [:div.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900 "Token Metadata Insights"]
+       (semantic-tabs config/token-semantics (:token-semantics state))
+       (case (:token-semantics state)
+         :api-endpoint (api-view state)
+         :word (word-view state)
+         (website-view state))
        [:.card-actions.justify-center
-        [:button.btn.btn-sm.btn-primary 
+        [:button.btn.btn-sm.btn-primary
          {:on-click #(js/logseq.hideMainUI)} "Confirm"]
-        [:button.btn.btn-sm.btn-ghost 
+        [:button.btn.btn-sm.btn-ghost
          {:on-click #(js/logseq.hideMainUI)} "Cancel"]]]]]))
 
 (comment
   (in-ns 'ui)
-  plugin-state  
+  plugin-state
   (js/logseq.showMainUI)
   (js/logseq.hideMainUI)
   (rum/mount (plugin-panel) (.getElementById js/document "app"))
-  (swap! plugin-state assoc :slash-commands {:name "Alice"})
   (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
-  ;; LSPluginCore.reload("logseq-url-plus")
-  (.reload js/top.LSPluginCore "logseq-url-plus")
-  (js-invoke js/top.LSPluginCore "reload" "logseq-url-plus")
-  )
-  
+  (do
+    (u/reload-plugin"logseq-url-plus")
+    (js/console.clear)))

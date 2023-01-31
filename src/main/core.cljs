@@ -6,10 +6,9 @@
    [rum.core :as rum]
    ["@logseq/libs"]
    ["link-preview-js" :as link-preview]
-   [util :refer [decode-html-content ednize url? else-and-last]]
+   [util :as u :refer [decode-html-content ednize http? else-and-last]]
    [ls] [config :refer [plugin-state]] [api] [ui]
-   [feat.define :as define]
-   [util :as u]))
+   [feat.define :as define]))
 
 (defn modify-block [{:keys [op type mode block child] 
                      :or   {op :default, mode :template}}]
@@ -30,13 +29,13 @@
           (cond
             (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
             :else nil)]
-    (if (url? url)
+    (if (http? url)
       (do
         (ls/show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (ednize meta-res)
                 api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                             (p/then #(identity %))
+                             (p/then   #(-> %))
                              (p/catch  #(js/console.log %)))
                 json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
                 api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
@@ -74,27 +73,28 @@
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
           block-content (ls/get-editing-block-content)
-          [all-but-last, last-token] (else-and-last block-content)
+          [block-before-token, last-token] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-token)]
     (reset! plugin-state {})
     (swap! plugin-state assoc 
            :token last-token 
-           :but-last all-but-last 
-           :maybe-label maybe-label
+           :token-label maybe-label
+           :block-content block-content
+           :block-content-before-token block-before-token 
            :url url
            :block-uuid block-uuid)
-    (if (url? url)
+    (if (http? url)
       (do
         (swap! plugin-state 
                merge {:token-semantics :website
-                      :meta-edn "Loading ..."})
+                      :meta-edn {:msg "Loading ..."}})
         (p/let [meta-res (.getLinkPreview link-preview url)
                 meta-edn (ednize meta-res)
                 auth (cond
                        (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
                        :else nil)
                 api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                             (p/then #(identity %))
+                             (p/then   #(-> %))
                              (p/catch  #(js/console.log %)))
                 json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
                 api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
@@ -112,7 +112,7 @@
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
-  (js/logseq.on "ui:visible:changed" 
+  (js/logseq.on "ui:visible:changed"
                 (fn [v]
                   (let [v (ednize v)]
                     (prn "Main UI visibility: " v)
@@ -120,9 +120,10 @@
                       (println "URL+ Mounting UI ...")
                       (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))))))
   (js/logseq.on "settings:changed" #(prn "settings: " %))
+  (ls/register-js-events)
+  (ls/register-slash-command "URL+ ..." #(advanced-command))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(modify-block opts)))
-  (ls/register-slash-command "URL+ Advanced ..." #(advanced-command))
   (ls/show-msg "URL+ loaded ..."))
 
 ; Logseq handshake
@@ -138,3 +139,6 @@
   (println "... core.reload!")
   (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
   #_(init))
+
+(comment
+  (u/reload-plugin "logseq-url-plus"))

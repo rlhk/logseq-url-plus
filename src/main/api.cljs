@@ -1,5 +1,6 @@
 ; CAUTION: ONLY allows pure fns to facilitate Node.js based TDD setup
 (ns api
+  "API of URL+"
   (:require
    [cuerdas.core :as str]))
 
@@ -26,6 +27,5 @@
   "Convert EDN data to Logseq attribute blocks"
   [data]
   (if (sequential? data)
-    (map #(identity {:content (edn->logseq-attrs %)}) data)
+    (map #(-> {:content (edn->logseq-attrs %)}) data)
     {:content (edn->logseq-attrs data)}))
-

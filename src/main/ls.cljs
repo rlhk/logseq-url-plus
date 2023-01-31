@@ -1,4 +1,5 @@
-(ns ls ; named `logseq` will cause issue in advanced compilation
+(ns ls 
+  "JS interop helper and Logseq APIs that could be aliased."
   (:require
    ["@logseq/libs"]))
 
@@ -20,3 +21,18 @@
 ;; (def provide-model js/logseq.provideModel)
 ;; (def set-main-ui-inline-style js/logseq.setMainUIInlineStyle)
 ;; (def show-settings-ui js/logseq.showSettingsUI)
+
+(defn register-js-events []
+  (js/document.addEventListener
+   "keydown"
+   #(do
+      (when (= (.-keyCode %) 27) (js/logseq.hideMainUI (clj->js {:restoreEditingCursor true})))
+      (.stopPropagation %))
+   false)
+  (js/document.addEventListener
+   "click"
+   #(let [clicked (.-target %)
+          backdrop (.closest clicked ".url-plus-backdrop")]
+      (when (= clicked backdrop)
+        (js/logseq.hideMainUI (clj->js {:restoreEditingCursor true}))))))
+
