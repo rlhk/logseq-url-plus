@@ -40,7 +40,7 @@
 (rum/defc token-input [t]
   [:.form-control
    [:label.input-group.input-group-xs
-    [:span "Token"]
+    [:span.font-semibold "Token"]
     [:input.input.input-bordered.input-xs 
      {:type "text"
       :read-only true
@@ -54,21 +54,58 @@
    "Block & Token Attributes"
    (select-keys state block-attrs)))
 
+(rum/defc template-composer
+  [state & {:keys [template-key template-type label placeholder class]}]
+  [:.form-control {:class class}
+   (when label [:label.label.w-max 
+                {:class (when (= template-type :select) "cursor-pointer")}
+                (when (= template-type :select)
+                  [:input.checkbox.checkbox-warning.checkbox-xs.mr-2 {:type "checkbox" :name "r0"}])
+                [:span.label-text label]])
+   (case template-type
+     :input
+     [:input.input.input-info.input-accent.input-sm.w-full
+      {:placeholder placeholder
+       :value (get state template-key "")
+       :on-change #(swap! plugin-state assoc template-key (.. % -target -value))}]
+     :select
+     "todo..."
+     #_[:label.label.cursor-pointer
+        [:span.label-text "Red"]
+        [:input.checkbox.checkbox-xs {:type "checkbox" :name "r0"}]]
+
+     (str ":template-type " template-type " to be implemented ..."))])
+
+(rum/defc templated-view
+  [state & {:keys [template-key class]}]
+  [:p.text-xs.text-left.border-dotted.border-slate-500
+   {:class class}
+   "▶️ "
+   (str/fmt (get state template-key "")
+            (merge (select-keys state block-attrs) (get state :meta-edn)))])
+
 (rum/defc website-view [state]
   [:<>
    [:.overflow-x-auto.max-h-64
     (data-table (:meta-edn state))]
-   [:input.input.w-full.text-slate-400
-    {:placeholder "Template for block content ..."
-     :value (or (:block-template state) "")
-     :on-change #(swap! plugin-state assoc :block-template (.. % -target -value))}]
-   [:p.text-xs.text-left
-    (str/fmt (or (:block-template state) "") 
-             (merge (select-keys state block-attrs) (:meta-edn state)))]
-   [:input.input.w-full.text-slate-400
-    {:placeholder "Template for block child ..."
-     :value (or (:block-child-template state) "")
-     :on-change #(swap! plugin-state assoc :block-child-template (.. % -target -value))}]])
+   (template-composer state
+                      :template-key :block-template
+                      :template-type :input
+                      :placeholder "Input template for block content ..."
+                      :label "Block content template"
+                      :class "w-full")
+   (template-composer state
+                      :template-key :child-template
+                      :template-type :select
+                      :label "Append child content"
+                      :class "w-full pl-4")
+   [:.w-full.border-dashed.border.border-y-indigo-500
+    (templated-view state
+                    :template-key :block-template
+                    :class "w-full")
+    (templated-view state
+                    :template-key :child-template
+                    :class "w-full pl-4")]])
 
 (rum/defc api-view [state]
   [:.overflow-x-auto.max-h-64
@@ -80,9 +117,10 @@
      [:table.table.table-compact.w-full
       [:tbody
        [:tr [:td
-             (if (u/http? token)
-               "The token is a http(s) URL. Not a word."
-               (str token))]]]]]))
+             (cond 
+               (u/http? token) "The token is a http(s) URL. Not a word."
+               (u/md-link? token) "The token is a markdown link. Not a word."
+               :else (str token))]]]]]))
 
 (rum/defc semantic-tabs < rum/reactive [semantics]
   (let [{:keys [token token-semantics api-edn meta-edn api-record-count]} 
@@ -103,7 +141,8 @@
             [:.badge.badge-info.badge-xs.ml-2 (str api-record-count)]
             :else nil))
         (when (and (= k :word)
-                   (u/http? token))
+                   (or (u/http? token)
+                       (u/md-link? token)))
           [:.badge.badge-error.badge-xs.ml-2 "!"])])]))
 
 (rum/defc plugin-panel < rum/reactive []

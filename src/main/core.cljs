@@ -116,12 +116,16 @@
                 (fn [v]
                   (let [v (ednize v)]
                     (prn "Main UI visibility: " v)
-                    (when (true? (:visible v))
-                      (println "URL+ Mounting UI ...")
-                      (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))))))
+                    (if (:visible v)
+                      (do
+                        (println "URL+ Mounting UI ...")
+                        (rum/mount (ui/plugin-panel) (.getElementById js/document "app")))
+                      (do 
+                        (println "URL+ Unmounting UI ...")
+                        (reset! plugin-state {}))))))
   (js/logseq.on "settings:changed" #(prn "settings: " %))
   (ls/register-js-events)
-  (ls/register-slash-command "URL+ ..." #(advanced-command))
+  (ls/register-slash-command "URL+ Advanced ..." #(advanced-command))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(modify-block opts)))
   (ls/show-msg "URL+ loaded ..."))

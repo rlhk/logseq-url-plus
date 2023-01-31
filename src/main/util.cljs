@@ -22,15 +22,18 @@
        (url? s)))
 
 (defn str->md-link
-  "Return a map of :label & :link."
+  "Parse a string and return a map of :label & :link."
   [s]
-  (->> (str/trim s)
-       (re-find #"\[(.*?)\]\((.*?)\)")
-       rest
-       (#(-> {:label (first %) :link (second %)}))))
+  (some->> (str/trim s)
+           (re-find #"\[(.*?)\]\((.*?)\)")
+           rest
+           (#(-> {:label (first %) :link (second %)}))))
 
 (defn md-link->str [{:keys [label link]}]
   (str/format "[%s](%s)" label link))
+
+(defn md-link? [s]
+  (some? (:link (str->md-link s))))
 
 (comment
   (str->md-link "[I'm label](I'm link)")
@@ -42,12 +45,12 @@
    from http Content-Type string say: 'application/json; charset=utf-8'
    TODO: Better use proper http client lib"
   [s]
-  (->> (str/trim s)
-       (re-find #"(.*?);\s*(.*?)$")
-       rest
-       (#(into {:mime-type (first %)}
-               (vector (-> % second (str/split #"=")))))
-       keywordize-keys))
+  (some->> (str/trim s)
+           (re-find #"(.*?);\s*(.*?)$")
+           rest
+           (#(into {:mime-type (first %)}
+                   (vector (-> % second (str/split #"=")))))
+           keywordize-keys))
 
 (defn json-response? 
   [content-type-str]

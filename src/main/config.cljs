@@ -8,7 +8,7 @@
     :token-semantics :website}))
 
 (def token-semantics
-  {:website "Website" :api-endpoint "API Endpoint" :word "Word"})
+  {:website "Website" :api-endpoint "API" :word "Word"})
 
 (def ls-plugin-settings
   [{:key "TwitterAccessToken"
@@ -56,7 +56,7 @@
     :type :api
     :block "%(but-last)s%(token)s"
     :child "```json\n%(api-json)s\n```"}
-   {:desc "URL+ Append Definition"
+   {:desc "URL+ Append Word Definition"
     :type :api/define
     :block "%(but-last)s%(token)s #card"
     :child "%(definition)s"}
@@ -64,6 +64,6 @@
     :type :api/tweet
     :block "%(but-last)s%(token)s #tweet"
     :child "%(tweet-text)s\n%(tweet-author)s (%(tweet-time)s)"}
-   {:desc "URL+ Link Wiktionary URL"
+   #_{:desc "URL+ Link Wiktionary URL"
     :type :link/define
     :block "%(but-last)s[%(token)s](%(url)s)"}])
