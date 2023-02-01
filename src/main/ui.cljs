@@ -6,6 +6,9 @@
    [cuerdas.core :as str]
    [feat.define]))
 
+(defn kw-str->kw [s]
+  (keyword (str/join "" (rest s))))
+
 (defn records? [data]
   (and (sequential? data), (map? (first data))))
 
@@ -54,13 +57,33 @@
    "Block & Token Attributes"
    (select-keys state block-attrs)))
 
+(rum/defc metadata-format-option [state]
+  (let [options config/metadata-formats]
+    [:.flex
+     [:.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900.mr-4 "Format as:"]
+     (for [[k v] options]
+       [:label.label.cursor-pointer.w-max.mr-2
+        [:input.radio.radio-xs.mr-2
+         {:type "radio"
+          :value k
+          :name "child-block-options"
+          :checked (= k (get state :child-block-option))
+          :on-change #(swap! plugin-state assoc :child-block-option (kw-str->kw (.. % -target -value)))}]
+        [:span.label-text.text-xs
+         v]])]))
+
 (rum/defc template-composer
   [state & {:keys [template-key template-type label placeholder class]}]
   [:.form-control {:class class}
    (when label [:label.label.w-max 
                 {:class (when (= template-type :select) "cursor-pointer")}
                 (when (= template-type :select)
-                  [:input.checkbox.checkbox-warning.checkbox-xs.mr-2 {:type "checkbox" :name "r0"}])
+                  [:input.checkbox.checkbox-warning.checkbox-xs.mr-2 
+                   {:type "checkbox" :name "r0"
+                    :checked (get state :append-child)
+                    :on-change #(do 
+                                  (println (.. % -target -checked))
+                                  (swap! plugin-state assoc :append-child (.. % -target -checked)))}])
                 [:span.label-text label]])
    (case template-type
      :input
@@ -69,7 +92,7 @@
        :value (get state template-key "")
        :on-change #(swap! plugin-state assoc template-key (.. % -target -value))}]
      :select
-     "todo..."
+     (metadata-format-option state)
      #_[:label.label.cursor-pointer
         [:span.label-text "Red"]
         [:input.checkbox.checkbox-xs {:type "checkbox" :name "r0"}]]
@@ -81,8 +104,12 @@
   [:p.text-xs.text-left.border-dotted.border-slate-500
    {:class class}
    "▶️ "
-   (str/fmt (get state template-key "")
-            (merge (select-keys state block-attrs) (get state :meta-edn)))])
+   (case template-key
+     :block-template
+     (str/fmt (get state template-key "")
+              (merge (select-keys state block-attrs) (get state :meta-edn)))
+     :child-template (str "NOTE: Metadata will be rendered in child block as: " (get config/metadata-formats (-> state :child-block-option)))
+     (str ":template-type " template-key " to be implemented ..."))])
 
 (rum/defc website-view [state]
   [:<>
@@ -99,13 +126,15 @@
                       :template-type :select
                       :label "Append formatted metadata as child block"
                       :class "w-full pl-4")
-   [:.w-full.border-dashed.border.border-y-indigo-500
-    (templated-view state
-                    :template-key :block-template
-                    :class "w-full")
-    (templated-view state
-                    :template-key :child-template
-                    :class "w-full pl-4")]])
+   [:<>
+    [:p.text-left.text-sm.font-semibold "Preview"]
+    [:.w-full.border-dashed.border.border-y-indigo-500
+     (templated-view state
+                     :template-key :block-template
+                     :class "w-full")
+     (templated-view state
+                     :template-key :child-template
+                     :class "w-full pl-4")]]])
 
 (rum/defc api-view [state]
   [:.overflow-x-auto.max-h-64
@@ -169,6 +198,8 @@
 (comment
   (in-ns 'ui)
   plugin-state
+  @plugin-state
+  (:child-block-option @plugin-state)
   (js/logseq.showMainUI)
   (js/logseq.hideMainUI)
   (rum/mount (plugin-panel) (.getElementById js/document "app"))

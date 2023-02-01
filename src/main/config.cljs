@@ -10,6 +10,15 @@
 (def token-semantics
   {:website "Website" :api-endpoint "API" :word "Word"})
 
+(def metadata-formats
+  {:edn "EDN"
+   :json "JSON"
+   :table "Markdown Table"
+   :logseq-attr "Logseq Attributes"})
+
+(def content-templates
+  {:before-title-url "%(block-content-before-token)s[%(title)s](%(url)s)"})
+
 (def ls-plugin-settings
   [{:key "TwitterAccessToken"
     :type "string"
