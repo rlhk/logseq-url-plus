@@ -60,7 +60,6 @@
 (rum/defc metadata-format-option [state]
   (let [options config/metadata-formats]
     [:.flex
-     [:.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900.mr-4 "Format as:"]
      (for [[k v] options]
        [:label.label.cursor-pointer.w-max.mr-2
         [:input.radio.radio-xs.mr-2
@@ -69,10 +68,9 @@
           :name "child-block-options"
           :checked (= k (get state :child-block-option))
           :on-change #(swap! plugin-state assoc :child-block-option (kw-str->kw (.. % -target -value)))}]
-        [:span.label-text.text-xs
-         v]])]))
+        [:span.label-text.text-xs v]])]))
 
-(rum/defc template-composer
+(rum/defc template-editor
   [state & {:keys [template-key template-type label placeholder class]}]
   [:.form-control {:class class}
    (when label [:label.label.w-max 
@@ -92,14 +90,14 @@
        :value (get state template-key "")
        :on-change #(swap! plugin-state assoc template-key (.. % -target -value))}]
      :select
-     (metadata-format-option state)
+     (if (get state :append-child) (metadata-format-option state))
      #_[:label.label.cursor-pointer
         [:span.label-text "Red"]
         [:input.checkbox.checkbox-xs {:type "checkbox" :name "r0"}]]
 
      (str ":template-type " template-type " to be implemented ..."))])
 
-(rum/defc templated-view
+(rum/defc content-preview
   [state & {:keys [template-key class]}]
   [:p.text-xs.text-left.border-dotted.border-slate-500
    {:class class}
@@ -108,42 +106,44 @@
      :block-template
      (str/fmt (get state template-key "")
               (merge (select-keys state block-attrs) (get state :meta-edn)))
-     :child-template (str "NOTE: Metadata will be rendered in child block as: " (get config/metadata-formats (-> state :child-block-option)))
+     :child-template 
+     (str "NOTE: Metadata will be rendered in child block as: " 
+          (get config/metadata-formats (-> state :child-block-option)))
      (str ":template-type " template-key " to be implemented ..."))])
 
 (rum/defc website-view [state]
   [:<>
-   [:.overflow-x-auto.max-h-64
+   [:.overflow-x-auto.max-h-60
     (data-table (:meta-edn state))]
-   (template-composer state
-                      :template-key :block-template
-                      :template-type :input
-                      :placeholder "Input template for block content ..."
-                      :label "Block content template"
-                      :class "w-full")
-   (template-composer state
-                      :template-key :child-template
-                      :template-type :select
-                      :label "Append formatted metadata as child block"
-                      :class "w-full pl-4")
+   (template-editor state
+                    :template-key :block-template
+                    :template-type :input
+                    :placeholder "Input template for block content ..."
+                    :label "Block content template"
+                    :class "w-full")
+   (template-editor state
+                    :template-key :child-template
+                    :template-type :select
+                    :label "Append formatted metadata as child block"
+                    :class "w-full pl-4")
    [:<>
-    [:p.text-left.text-sm.font-semibold "Preview"]
+    [:p.text-left.text-sm.font-semibold "Content Preview"]
     [:.w-full.border-dashed.border.border-y-indigo-500
-     (templated-view state
-                     :template-key :block-template
-                     :class "w-full")
+     (content-preview state
+                      :template-key :block-template
+                      :class "w-full")
      (when (get state :append-child)
-       (templated-view state
-                       :template-key :child-template
-                       :class "w-full pl-4"))]]])
+       (content-preview state
+                        :template-key :child-template
+                        :class "w-full pl-4"))]]])
 
 (rum/defc api-view [state]
-  [:.overflow-x-auto.max-h-64
+  [:.overflow-x-auto.max-h-60
    (data-table (:api-edn state))])
 
 (rum/defc word-view [state]
   (let [token (:token state)]
-    [:.overflow-x-auto.max-h-64
+    [:.overflow-x-auto.max-h-60
      [:table.table.table-compact.w-full
       [:tbody
        [:tr [:td
@@ -182,7 +182,7 @@
      [:div#url-plus-modal.url-plus-box.card.bg-base-100.shadow-xl {:class "w-3/5"}
       [:.items-center.text-center.space-y-2
        (token-input (:token state))
-       [:.overflow-x-auto.max-h-80
+       [:.overflow-x-auto.max-h-72
         (block-attrs-view state)]
        [:div.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900 "Token Metadata Insights"]
        (semantic-tabs config/token-semantics (:token-semantics state))

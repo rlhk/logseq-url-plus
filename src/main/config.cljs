@@ -11,9 +11,9 @@
   {:website "Website" :api-endpoint "API" :word "Word"})
 
 (def metadata-formats
-  {:edn "EDN"
-   :json "JSON"
-   :table "Markdown Table"
+  {:json "JSON"
+   :edn "EDN"
+   :table "Table"
    :logseq-attr "Logseq Attributes"})
 
 (def content-templates
