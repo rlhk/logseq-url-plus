@@ -132,9 +132,10 @@
      (templated-view state
                      :template-key :block-template
                      :class "w-full")
-     (templated-view state
-                     :template-key :child-template
-                     :class "w-full pl-4")]]])
+     (when (get state :append-child)
+       (templated-view state
+                       :template-key :child-template
+                       :class "w-full pl-4"))]]])
 
 (rum/defc api-view [state]
   [:.overflow-x-auto.max-h-64
