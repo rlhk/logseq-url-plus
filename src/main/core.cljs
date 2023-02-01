@@ -67,6 +67,10 @@
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
+(defn init-state []
+  (reset! plugin-state
+          {:block-template (:before-title-url config/content-templates)}))
+
 (defn advanced-command []
   (println "URL+ Advanced Mode ...")
   (js/logseq.showMainUI)
@@ -75,7 +79,7 @@
           block-content (ls/get-editing-block-content)
           [block-before-token, last-token] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-token)]
-    (reset! plugin-state {})
+    (init-state)
     (swap! plugin-state assoc 
            :token last-token 
            :token-label maybe-label
