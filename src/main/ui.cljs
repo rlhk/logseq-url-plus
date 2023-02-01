@@ -97,7 +97,7 @@
    (template-composer state
                       :template-key :child-template
                       :template-type :select
-                      :label "Append child content"
+                      :label "Append formatted metadata as child block"
                       :class "w-full pl-4")
    [:.w-full.border-dashed.border.border-y-indigo-500
     (templated-view state
@@ -124,7 +124,8 @@
 
 (rum/defc semantic-tabs < rum/reactive [semantics]
   (let [{:keys [token token-semantics api-edn meta-edn api-record-count]} 
-        (rum/react plugin-state)]
+        (rum/react plugin-state)
+        issue-indicator [:.ml-2 "😓"]]
     [:.tabs
      (for [[k desc] semantics]
        [:.tab.tab-sm.tab-lifted.space-x-1
@@ -132,18 +133,16 @@
          :class (when (= token-semantics k) "tab-active")
          :on-click #(swap! plugin-state assoc :token-semantics k)}
         desc
-        (when (and (= k :website), (not meta-edn))
-          [:.badge.badge-error.badge-xs.ml-2 "!"])
+        (when (and (= k :website), (not meta-edn)) issue-indicator)
         (when (= k :api-endpoint)
           (cond
-            (not api-edn) [:.badge.badge-error.badge-xs.ml-2 "!"]
+            (not api-edn) issue-indicator
             (and (some? api-record-count), (not (zero? api-record-count)))
             [:.badge.badge-info.badge-xs.ml-2 (str api-record-count)]
             :else nil))
         (when (and (= k :word)
-                   (or (u/http? token)
-                       (u/md-link? token)))
-          [:.badge.badge-error.badge-xs.ml-2 "!"])])]))
+                   (or (u/http? token), (u/md-link? token)))
+          issue-indicator)])]))
 
 (rum/defc plugin-panel < rum/reactive []
   (println "Mounting Logseq URL+ UI ...")
@@ -175,5 +174,5 @@
   (rum/mount (plugin-panel) (.getElementById js/document "app"))
   (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
   (do
-    (u/reload-plugin"logseq-url-plus")
+    (u/reload-plugin "logseq-url-plus")
     (js/console.clear)))
