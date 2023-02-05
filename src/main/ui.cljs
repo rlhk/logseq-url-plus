@@ -207,4 +207,21 @@
   (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
   (do
     (u/reload-plugin "logseq-url-plus")
-    (js/console.clear)))
+    (js/console.clear))
+  ;; djblue/portal experiments. 
+  ;; Using https://cljdoc.org/d/djblue/portal/0.35.1/doc/remote-api
+  ;; Run hosting process to fire up the portal UI
+  ;; $> rlwrap bb -cp `clj -Spath -Sdeps '{:deps {djblue/portal {:mvn/version "0.35.1"}}}'`
+  (require '[portal.client.web :as p])
+  (def submit (partial p/submit {:port 5678}))
+  (add-tap #'submit)
+  (tap> :hello)
+  (tap> @plugin-state)
+  ;; portal.api requires jvm/node, not web project 
+  ;; (require '[portal.api :as p])
+  ;; (def p (p/open))
+  ;; (def p (p/open {:launcher :vs-code}))
+  ;; (add-tap #'p/submit)
+  ;; Not what we want. JS runtime will be moved out of logseq to http://localhost:8080
+  ;; (require 'shadow.remote.runtime.cljs.browser)
+  )
