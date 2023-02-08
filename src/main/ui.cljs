@@ -152,16 +152,16 @@
                (u/md-link? token) "The token is a markdown link. Not a word."
                :else (str token))]]]]]))
 
-(rum/defc semantic-tabs < rum/reactive [semantics]
-  (let [{:keys [token token-semantics api-edn meta-edn api-record-count]} 
-        (rum/react plugin-state)
+(rum/defc semantic-tabs
+  [{:keys [token option api-edn meta-edn api-record-count]} all-semantics]
+  (let [{:keys [semantics]} option
         issue-indicator [:.ml-2 "😓"]]
     [:.tabs
-     (for [[k desc] semantics]
+     (for [[k desc] all-semantics]
        [:.tab.tab-sm.tab-lifted.space-x-1
         {:key k
-         :class (when (= token-semantics k) "tab-active")
-         :on-click #(swap! plugin-state assoc :token-semantics k)}
+         :class (when (= semantics k) "tab-active")
+         :on-click #(swap! plugin-state assoc-in [:option :semantics] k)}
         desc
         (when (and (= k :website), (not meta-edn)) issue-indicator)
         (when (= k :api-endpoint)
@@ -175,7 +175,7 @@
           issue-indicator)])]))
 
 (rum/defc plugin-panel < rum/reactive []
-  (println "Mounting Logseq URL+ UI ...")
+  (println "Mounting URL+ UI ...")
   (let [state (rum/react plugin-state)]
     ;; (println (str state))
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
@@ -185,8 +185,8 @@
        [:.overflow-x-auto.max-h-72
         (block-attrs-view state)]
        [:div.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900 "Token Metadata Insights"]
-       (semantic-tabs config/token-semantics (:token-semantics state))
-       (case (:token-semantics state)
+       (semantic-tabs state config/token-semantics)
+       (case (get-in state [:option :semantics])
          :api-endpoint (api-view state)
          :word (word-view state)
          (website-view state))
@@ -209,15 +209,18 @@
     (u/reload-plugin "logseq-url-plus")
     (js/console.clear))
   ;; djblue/portal experiments. 
-  ;; Using https://cljdoc.org/d/djblue/portal/0.35.1/doc/remote-api
-  ;; Run hosting process to fire up the portal UI
-  ;; $> rlwrap bb -cp `clj -Spath -Sdeps '{:deps {djblue/portal {:mvn/version "0.35.1"}}}'`
-  (require '[portal.client.web :as p])
-  (def submit (partial p/submit {:port 5678}))
-  (add-tap #'submit)
-  (tap> :hello)
+  ;; Follow https://cljdoc.org/d/djblue/portal/0.35.1/doc/remote-api
+  ;; to run portal UI hosting process
+  ;; $ rlwrap bb -cp `clj -Spath -Sdeps '{:deps {djblue/portal {:mvn/version "0.35.1"}}}'`
+  ;; user=> (require '[portal.api :as p])
+  ;; user=> (p/open {:port 5678})
+  (do
+    (require '[portal.client.web :as p])
+    (def submit (partial p/submit {:port 5678}))
+    (add-tap #'submit))
+  (tap> [:hello :world])
   (tap> @plugin-state)
-  ;; portal.api requires jvm/node, not web project 
+  ;; portal.api requires jvm/node, not for browser runtime 
   ;; (require '[portal.api :as p])
   ;; (def p (p/open))
   ;; (def p (p/open {:launcher :vs-code}))

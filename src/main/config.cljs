@@ -1,12 +1,5 @@
 (ns config)
 
-(defonce plugin-state
-  (atom
-   {;:slash-commands slash-commands
-    ;:ls-plugin-settings ls-plugin-settings
-    :token ""
-    :token-semantics :website}))
-
 (def token-semantics
   {:website "Website" :api-endpoint "API" :word "Word"})
 
@@ -76,3 +69,16 @@
    #_{:desc "URL+ Link Wiktionary URL"
     :type :link/define
     :block "%(but-last)s[%(token)s](%(url)s)"}])
+
+(def initial-state
+  {:token nil
+   :token-label nil
+   :block-content nil
+   :block-content-before-token nil
+   :block-template (:before-title-url content-templates)
+   :url nil
+   :option {:semantics :website}
+   :block {:uuid nil}
+   :child {}})
+
+(defonce plugin-state (atom initial-state))

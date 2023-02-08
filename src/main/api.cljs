@@ -2,7 +2,8 @@
 (ns api
   "API of URL+"
   (:require
-   [cuerdas.core :as str]))
+   [cuerdas.core :as str]
+   [config :refer [plugin-state]]))
 
 (defn md-link->label-and-url
   "Convert markdown link to [label, url], return input as it is if not a markdown link."
@@ -29,3 +30,5 @@
   (if (sequential? data)
     (map #(-> {:content (edn->logseq-attrs %)}) data)
     {:content (edn->logseq-attrs data)}))
+
+;; Plugin app state management

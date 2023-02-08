@@ -67,10 +67,6 @@
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
-(defn init-state []
-  (reset! plugin-state
-          {:block-template (:before-title-url config/content-templates)}))
-
 (defn advanced-command []
   (println "URL+ Advanced Mode ...")
   (js/logseq.showMainUI)
@@ -79,18 +75,17 @@
           block-content (ls/get-editing-block-content)
           [block-before-token, last-token] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-token)]
-    (init-state)
-    (swap! plugin-state assoc 
-           :token last-token 
-           :token-label maybe-label
-           :block-content block-content
-           :block-content-before-token block-before-token 
-           :url url
-           :block-uuid block-uuid)
+    (reset! plugin-state config/initial-state)
+    (swap! plugin-state merge {:token last-token
+                               :token-label maybe-label
+                               :block-content block-content
+                               :block-content-before-token block-before-token
+                               :url url
+                               :block {:uuid block-uuid}})
     (if (http? url)
       (do
-        (swap! plugin-state 
-               merge {:token-semantics :website
+        (swap! plugin-state
+               merge {:option {:semantics :website}
                       :meta-edn {:msg "Loading ..."}})
         (p/let [meta-res (.getLinkPreview link-preview url)
                 meta-edn (ednize meta-res)
@@ -104,29 +99,32 @@
                 api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
                                          (p/then   #(.json %))
                                          (p/catch  #(js/console.log %))))
-                api-edn  (when json? (ednize api-json))]
+                api-edn  (when json? (ednize api-json))
+                api-record-count (count api-edn)]
           (swap! plugin-state
-                 merge {:meta-json (js/JSON.stringify meta-res nil 2)
+                 merge {;:meta-json (js/JSON.stringify meta-res nil 2)
                         :meta-edn meta-edn
-                        :api-json (js/JSON.stringify api-json nil 2)
+                        ;:api-json (js/JSON.stringify api-json nil 2)
                         :api-edn api-edn
-                        :api-record-count (count api-edn)})))
-      (do
-        (swap! plugin-state assoc :token-semantics :word)))))
+                        :api-record-count api-record-count})
+          (when (pos? api-record-count)
+            (swap! plugin-state assoc-in [:option :semantics] :api-endpoint))))
+      (swap! plugin-state assoc-in [:option :semantics] :word))))
 
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
-  (js/logseq.on "ui:visible:changed"
-                (fn [v]
-                  (let [v (ednize v)]
-                    (prn "Main UI visibility: " v)
-                    (if (:visible v)
-                      (do
-                        (println "URL+ Mounting UI ...")
-                        (rum/mount (ui/plugin-panel) (.getElementById js/document "app")))
-                      (do 
-                        (println "URL+ Unmounting UI ...")
-                        (reset! plugin-state {}))))))
+  (js/logseq.on 
+   "ui:visible:changed"
+   (fn [v]
+     (let [v (ednize v)]
+       (prn "Main UI visibility: " v)
+       (if (:visible v)
+         (do
+           (println "URL+ Mounting UI ...")
+           (rum/mount (ui/plugin-panel) (.getElementById js/document "app")))
+         (do
+           (println "URL+ Unmounting UI ...")
+           (reset! plugin-state config/initial-state))))))
   (js/logseq.on "settings:changed" #(prn "settings: " %))
   (ls/register-js-events)
   (ls/register-slash-command "URL+ Advanced ..." #(advanced-command))
