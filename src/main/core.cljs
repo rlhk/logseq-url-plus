@@ -55,9 +55,9 @@
                           :api-json    (js/JSON.stringify api-json nil 2)
                           :api-attrs   (api/edn->logseq-attrs api-edn)
                           :api-blocks  (api/edn->logseq-blocks api-edn)
-                          :tweet-text  (-> api-edn (get-in [:data 0 :text]))
-                          :tweet-time  (-> api-edn (get-in [:data 0 :created_at]))
-                          :tweet-author (-> api-edn (get-in [:includes :users 0 :username]))
+                          :tweet-text   (-> api-edn :data first :text)
+                          :tweet-time   (-> api-edn :data first :created_at)
+                          :tweet-author (-> api-edn :includes :users first :username)
                           :but-last    all-but-last}]
           (do
             (println "URL+ Formatting block(s) ...")
@@ -67,7 +67,7 @@
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
-(defn advanced-command []
+(defn advanced-mode []
   (println "URL+ Advanced Mode ...")
   (js/logseq.showMainUI)
   (p/let [current-block (ls/get-current-block)
@@ -75,7 +75,6 @@
           block-content (ls/get-editing-block-content)
           [block-before-token, last-token] (else-and-last block-content)
           [maybe-label, url]  (api/md-link->label-and-url last-token)]
-    (reset! plugin-state config/initial-state)
     (swap! plugin-state merge {:token last-token
                                :token-label maybe-label
                                :block-content block-content
@@ -124,10 +123,10 @@
            (rum/mount (ui/plugin-panel) (.getElementById js/document "app")))
          (do
            (println "URL+ Unmounting UI ...")
-           (reset! plugin-state config/initial-state))))))
+           (swap! plugin-state select-keys config/persistent-state-keys))))))
   (js/logseq.on "settings:changed" #(prn "settings: " %))
   (ls/register-js-events)
-  (ls/register-slash-command "URL+ Advanced ..." #(advanced-command))
+  (ls/register-slash-command "URL+ Advanced ..." #(advanced-mode))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(modify-block opts)))
   (ls/show-msg "URL+ loaded ..."))

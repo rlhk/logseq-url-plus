@@ -62,12 +62,13 @@
     [:.flex
      (for [[k v] options]
        [:label.label.cursor-pointer.w-max.mr-2
+        {:key k}
         [:input.radio.radio-xs.mr-2
          {:type "radio"
           :value k
           :name "child-block-options"
-          :checked (= k (get state :child-block-option))
-          :on-change #(swap! plugin-state assoc :child-block-option (kw-str->kw (.. % -target -value)))}]
+          :checked (= k (-> state :option :child-block))
+          :on-change #(swap! plugin-state assoc-in [:option :child-block] (kw-str->kw (.. % -target -value)))}]
         [:span.label-text.text-xs v]])]))
 
 (rum/defc template-editor
@@ -78,10 +79,10 @@
                 (when (= template-type :select)
                   [:input.checkbox.checkbox-warning.checkbox-xs.mr-2 
                    {:type "checkbox" :name "r0"
-                    :checked (get state :append-child)
+                    :checked (-> state :option :append-child)
                     :on-change #(do 
                                   (println (.. % -target -checked))
-                                  (swap! plugin-state assoc :append-child (.. % -target -checked)))}])
+                                  (swap! plugin-state assoc-in [:option :append-child] (.. % -target -checked)))}])
                 [:span.label-text label]])
    (case template-type
      :input
@@ -90,7 +91,7 @@
        :value (get state template-key "")
        :on-change #(swap! plugin-state assoc template-key (.. % -target -value))}]
      :select
-     (if (get state :append-child) (metadata-format-option state))
+     (if (-> state :option :append-child) (metadata-format-option state))
      #_[:label.label.cursor-pointer
         [:span.label-text "Red"]
         [:input.checkbox.checkbox-xs {:type "checkbox" :name "r0"}]]
@@ -108,7 +109,7 @@
               (merge (select-keys state block-attrs) (get state :meta-edn)))
      :child-template 
      (str "NOTE: Metadata will be rendered in child block as: " 
-          (get config/metadata-formats (-> state :child-block-option)))
+          (get config/metadata-formats (-> state :option :child-block)))
      (str ":template-type " template-key " to be implemented ..."))])
 
 (rum/defc website-view [state]
@@ -132,7 +133,7 @@
      (content-preview state
                       :template-key :block-template
                       :class "w-full")
-     (when (get state :append-child)
+     (when (-> state :option :append-child)
        (content-preview state
                         :template-key :child-template
                         :class "w-full pl-4"))]]])
@@ -176,6 +177,7 @@
 
 (rum/defc plugin-panel < rum/reactive []
   (println "Mounting URL+ UI ...")
+  (tap> @plugin-state)
   (let [state (rum/react plugin-state)]
     ;; (println (str state))
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
@@ -186,7 +188,7 @@
         (block-attrs-view state)]
        [:div.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900 "Token Metadata Insights"]
        (semantic-tabs state config/token-semantics)
-       (case (get-in state [:option :semantics])
+       (case (-> state :option :semantics)
          :api-endpoint (api-view state)
          :word (word-view state)
          (website-view state))
@@ -200,7 +202,7 @@
   (in-ns 'ui)
   plugin-state
   @plugin-state
-  (:child-block-option @plugin-state)
+  (-> @plugin-state :option :child-block)
   (js/logseq.showMainUI)
   (js/logseq.hideMainUI)
   (rum/mount (plugin-panel) (.getElementById js/document "app"))

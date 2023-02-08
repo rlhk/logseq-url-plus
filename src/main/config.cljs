@@ -70,15 +70,18 @@
     :type :link/define
     :block "%(but-last)s[%(token)s](%(url)s)"}])
 
+(def persistent-state-keys
+  [:block-template :option])
+
 (def initial-state
   {:token nil
    :token-label nil
+   :url nil
    :block-content nil
    :block-content-before-token nil
    :block-template (:before-title-url content-templates)
-   :url nil
    :option {:semantics :website}
-   :block {:uuid nil}
-   :child {}})
+   :block nil
+   :child nil})
 
 (defonce plugin-state (atom initial-state))
