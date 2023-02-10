@@ -8,7 +8,7 @@
   [rum "0.12.10"]]
  :dev-http {8080 "dist"}
  :nrepl {:port 8702
-         :middleware [#_portal.nrepl/wrap-portal]
+         :middleware [portal.nrepl/wrap-portal]
          :init-ns core}
  :compiler-options {:infer-externs      :auto
                     :output-feature-set :es-next
@@ -20,9 +20,9 @@
            :module-loader true
            :output-dir "dist"
            :modules  {:index {:init-fn core/init}}
-           ;; :build-hooks [(portal.shadow.remote/hook)]
+           :build-hooks [(portal.shadow.remote/hook)]
            :devtools {:preloads [devtools.preload
-                                 #_portal.setup]
+                                 portal.setup]
                       :after-load core/reload
                       :repl-pprint true
                       :watch-dir "dist"} ; Doesn't work for Logseq dev mode. Have to reload plugin.

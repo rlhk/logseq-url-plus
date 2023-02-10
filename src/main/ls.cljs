@@ -1,6 +1,9 @@
 (ns ls 
   "JS interop helper and Logseq APIs that could be aliased."
   (:require
+   [cuerdas.core :as str]
+   [clojure.pprint :refer [pprint]]
+   [api]
    ["@logseq/libs"]))
 
 (def show-msg js/logseq.UI.showMsg)
@@ -36,3 +39,28 @@
       (when (= clicked backdrop)
         (js/logseq.hideMainUI (clj->js {:restoreEditingCursor true}))))))
 
+(defn format-block-and-child
+  [uuid block-content child-block-content]
+  (println "URL+ Formatting block (and child) ...")
+  (when block-content (update-block uuid, block-content))
+  (when child-block-content (insert-block uuid, child-block-content )))
+
+(defn md-table 
+  "Generate markdown table text."
+  [data]
+  (cond
+    (map? data)
+    (str/join 
+     "\n"
+     (into ["| KEY | VALUE |" "| ----- | ----- |"]
+           (for [[k v] data]
+             (str/fmt "| %s | %s |" (name k) (str v)))))
+    :else "-- Unhanled data shape ---"))
+
+(defn md-data-block [data format]
+  (case format
+    :logseq-attrs (str "\n" (api/edn->logseq-attrs data))
+    :json (str/fmt "```json\n%s\n```" (js/JSON.stringify (clj->js data) nil 2))
+    :table (md-table data)
+    ;; Default
+    (str/fmt "```edn\n%s```" (with-out-str (pprint data)))))

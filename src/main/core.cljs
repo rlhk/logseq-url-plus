@@ -10,8 +10,8 @@
    [ls] [config :refer [plugin-state]] [api] [ui]
    [feat.define :as define]))
 
-(defn modify-block [{:keys [op type mode block child] 
-                     :or   {op :default, mode :template}}]
+(defn handle-slash-cmd [{:keys [op type mode block child]
+                         :or   {op :default, mode :template}}]
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
           block-content (ls/get-editing-block-content)
@@ -107,7 +107,7 @@
                         :api-edn api-edn
                         :api-record-count api-record-count})
           (when (pos? api-record-count)
-            (swap! plugin-state assoc-in [:option :semantics] :api-endpoint))))
+            (swap! plugin-state assoc-in [:option :semantics] :api))))
       (swap! plugin-state assoc-in [:option :semantics] :word))))
 
 (defn main []
@@ -116,7 +116,7 @@
    "ui:visible:changed"
    (fn [v]
      (let [v (ednize v)]
-       (prn "Main UI visibility: " v)
+       #_(prn "Main UI visibility: " v)
        (if (:visible v)
          (do
            (println "URL+ Mounting UI ...")
@@ -128,7 +128,7 @@
   (ls/register-js-events)
   (ls/register-slash-command "URL+ Advanced ..." #(advanced-mode))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
-    (ls/register-slash-command desc, #(modify-block opts)))
+    (ls/register-slash-command desc, #(handle-slash-cmd opts)))
   (ls/show-msg "URL+ loaded ..."))
 
 ; Logseq handshake

@@ -8,6 +8,12 @@
 ;; https://github.com/google/closure-library/blob/master/closure/goog/html/textextractor.js#L13
 (def decode-html-content gtext/extractTextContent)
 
+(defn target-value [e]
+  (.. e -target -value))
+
+(defn target-checked [e]
+  (.. e -target -checked))
+
 (defn ednize [data]
   (js->clj data :keywordize-keys true))
 

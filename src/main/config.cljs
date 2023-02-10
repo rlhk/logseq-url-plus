@@ -1,16 +1,17 @@
 (ns config)
 
 (def token-semantics
-  {:website "Website" :api-endpoint "API" :word "Word"})
+  {:website "Website" :api "API" :word "Word"})
 
 (def metadata-formats
-  {:json "JSON"
-   :edn "EDN"
-   :table "Table"
-   :logseq-attr "Logseq Attributes"})
+  {:edn "EDN"
+   :json "JSON"
+   :logseq-attrs "Attributes"
+   :table "Table"})
 
 (def content-templates
-  {:before-title-url "%(block-content-before-token)s[%(title)s](%(url)s)"})
+  {:default "%(block-content)s"
+   :before-title-url "%(block-content-before-token)s[%(title)s](%(url)s)"})
 
 (def ls-plugin-settings
   [{:key "TwitterAccessToken"
@@ -79,7 +80,7 @@
    :url nil
    :block-content nil
    :block-content-before-token nil
-   :block-template (:before-title-url content-templates)
+   :block-template (:default content-templates)
    :option {:semantics :website}
    :block nil
    :child nil})
