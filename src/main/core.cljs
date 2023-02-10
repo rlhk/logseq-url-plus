@@ -67,7 +67,7 @@
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
-(defn advanced-mode []
+(defn handle-advanced-mode []
   (println "URL+ Advanced Mode ...")
   (js/logseq.showMainUI)
   (p/let [current-block (ls/get-current-block)
@@ -83,9 +83,8 @@
                                :block {:uuid block-uuid}})
     (if (http? url)
       (do
-        (swap! plugin-state
-               merge {:option {:semantics :website}
-                      :meta-edn {:msg "Loading ..."}})
+        (swap! plugin-state assoc-in [:option :semantics] :website)
+        (swap! plugin-state assoc-in [:meta-edn :msg] "Loading")
         (p/let [meta-res (.getLinkPreview link-preview url)
                 meta-edn (ednize meta-res)
                 auth (cond
@@ -126,7 +125,7 @@
            (swap! plugin-state select-keys config/persistent-state-keys))))))
   (js/logseq.on "settings:changed" #(prn "settings: " %))
   (ls/register-js-events)
-  (ls/register-slash-command "URL+ Advanced ..." #(advanced-mode))
+  (ls/register-slash-command "URL+ Advanced ..." #(handle-advanced-mode))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(handle-slash-cmd opts)))
   (ls/show-msg "URL+ loaded ..."))
@@ -146,4 +145,4 @@
   #_(init))
 
 (comment
-  (u/reload-plugin "logseq-url-plus"))
+  (ls/reload-plugin "logseq-url-plus"))

@@ -2,8 +2,9 @@
 (ns api
   "API of URL+"
   (:require
-   [cuerdas.core :as str]
-   [config :refer [plugin-state]]))
+   [clojure.pprint :refer [pprint]]
+   [util :as u :refer [records?]]
+   [cuerdas.core :as str]))
 
 (defn md-link->label-and-url
   "Convert markdown link to [label, url], return input as it is if not a markdown link."
@@ -30,5 +31,42 @@
   (if (sequential? data)
     (map #(-> {:content (edn->logseq-attrs %)}) data)
     {:content (edn->logseq-attrs data)}))
+
+(defn md-table-row 
+  "Return string representation of a markdown table row."
+  [data] 
+  (str "| " (str/join (interpose " | " data)) " |"))
+
+(defn md-table-header 
+  "Return string representation of a markdown table header with the separator."
+  [headers]
+  (str/join "\n"
+            [(md-table-row headers)
+             (md-table-row (repeat (count headers) " ----- "))]))
+
+(defn md-table 
+  "Return markdown table string from data shape of a map or a vector of maps."
+  [data]
+  (cond
+    (map? data)
+    (str/join "\n"
+     (into [(md-table-header ["KEY" "VALUE"])]
+           (for [[k v] data] (md-table-row [(name k) (str v)]))))
+
+    (records? data)
+    (let [headers (keys (first data))]
+      (str/join "\n"
+       (into [(md-table-header (->> headers (map (comp str/upper name))))]
+             (for [i data] (md-table-row (for [h headers] (get i h)))))))
+
+    :else (str data)))
+
+(defn md-data-block [data format]
+  (case format
+    :logseq-attrs (str "\n" (api/edn->logseq-attrs data))
+    :json (str/fmt "```json\n%s\n```" (js/JSON.stringify (clj->js data) nil 2))
+    :table (md-table data)
+    ;; Default
+    (str/fmt "```edn\n%s```" (with-out-str (pprint data)))))
 
 ;; Plugin app state management

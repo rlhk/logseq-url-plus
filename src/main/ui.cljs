@@ -1,14 +1,12 @@
 (ns ui
   (:require 
    [rum.core :as rum]
-   [config :refer [plugin-state]]
-   [util :as u :refer [target-value target-checked]]
-   [ls]
    [cuerdas.core :as str]
+   [config :refer [plugin-state block-attrs]]
+   [util :as u :refer [target-value target-checked records?]]
+   [api :refer [md-data-block]] 
+   [ls]
    [feat.define]))
-
-(defn records? [data]
-  (and (sequential? data), (map? (first data))))
 
 (defn data-table 
   ([data] (data-table nil data))
@@ -48,8 +46,6 @@
       :placeholder (when (str/empty? t) "No token detected")
       :style {:width "100%"}
       :default-value t}]]])
-
-(def block-attrs [:token :token-label :url :block-content :block-content-before-token])
 
 (rum/defc block-attrs-view [state]
   (data-table
@@ -104,7 +100,7 @@
      (str/fmt (get state template-key "")
               (merge (select-keys state block-attrs) (get state :meta-edn)))
      :child-template 
-     (str "NOTE: Metadata will be rendered in child block as: " 
+     (str "NOTE: Metadata/data will be rendered in child block as: " 
           (get config/metadata-formats (-> state :option :child-block-format)))
      (str ":template-type " template-key " to be implemented ..."))])
 
@@ -112,27 +108,34 @@
   [:<>
    [:.overflow-x-auto.max-h-60
     (data-table (:meta-edn state))]
-   (template-editor state
-                    :template-key :block-template
-                    :template-type :input
-                    :placeholder "Input template for block content ..."
-                    :label "Block content template"
-                    :class "w-full")
-   (template-editor state
-                    :template-key :child-template
-                    :template-type :select
-                    :label "Append formatted metadata as child block"
-                    :class "w-full pl-4")
-   [:<>
-    [:p.text-left.text-sm.font-semibold "Content Preview"]
-    [:.w-full.border-dashed.border.border-y-indigo-500
-     (content-preview state
+   ])
+
+(rum/defc template-view [{:keys [option] :as state}]
+  (let [{:keys [semantics]} option]
+    [:<>
+     [:p.text-left.text-sm.font-semibold "Templates"]
+     (template-editor state
                       :template-key :block-template
+                      :template-type :input
+                      :placeholder "Input template for block content ..."
+                      :label "Block content template"
                       :class "w-full")
-     (when (-> state :option :append-child-block?)
-       (content-preview state
-                        :template-key :child-template
-                        :class "w-full pl-4"))]]])
+     (template-editor state
+                      :template-key :child-template
+                      :template-type :select
+                      :label (str/fmt 
+                              "Append formatted %s metadata/data as child block" 
+                              (get config/token-semantics semantics))
+                      :class "w-full pl-4")
+     [:p.text-left.text-sm.font-semibold "Content Preview"]
+     [:.w-full.border-dashed.border.border-y-indigo-500
+      (content-preview state
+                       :template-key :block-template
+                       :class "w-full")
+      (when (-> state :option :append-child-block?)
+        (content-preview state
+                         :template-key :child-template
+                         :class "w-full pl-4"))]]))
 
 (rum/defc api-view [state]
   [:.overflow-x-auto.max-h-60
@@ -172,24 +175,30 @@
           issue-indicator)])]))
 
 (defn handle-action [state]
-  (case (-> state :option :semantics)
-    :website
-    (do
-      (println "action :website")
-      (when-let [block-uuid (-> state :block :uuid)]
+  (when-let [block-uuid (-> state :block :uuid)]
+    (case (-> state :option :semantics)
+      :website
+      (do
+        (println "URL+ Handle semantics: :website")
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]
            (str/fmt block-template (merge (select-keys state block-attrs) (:meta-edn state))))
          (let [{:keys [append-child-block? child-block-format]} (:option state)]
-           (when append-child-block? (ls/md-data-block (:meta-edn state) child-block-format))))))
-    :api
-    (do
-      (println "action :api"))
-    :word
-    (do
-      (println "action :word"))
-    (println "action: default"))
+           (when append-child-block? (md-data-block (:meta-edn state) child-block-format)))))
+      :api
+      (do
+        (println "URL+ Handle semantics: :api") 
+        (ls/format-block-and-child
+         block-uuid
+         (when-let [block-template (:block-template state)]
+           (str/fmt block-template (merge (select-keys state block-attrs) (:api-edn state))))
+         (let [{:keys [append-child-block? child-block-format]} (:option state)]
+           (when append-child-block? (md-data-block (:api-edn state) child-block-format)))))
+      :word
+      (do
+        (println "URL+ Handle semantics: :word"))
+      (println "action: default")))
   (js/logseq.hideMainUI))
 
 (rum/defc plugin-panel < rum/reactive []
@@ -209,6 +218,7 @@
          :api  (api-view state)
          :word (word-view state)
          (website-view state))
+       (template-view state)
        [:.card-actions.justify-center
         [:button.btn.btn-sm.btn-primary
          {:on-click #(handle-action state)} "Confirm"]
@@ -225,7 +235,7 @@
   (rum/mount (plugin-panel) (.getElementById js/document "app"))
   (swap! plugin-state assoc :slash-commands {:name "Bob" :gender :male})
   (do
-    (u/reload-plugin "logseq-url-plus")
+    (ls/reload-plugin "logseq-url-plus")
     (js/console.clear))
   ;; djblue/portal experiments. 
   ;; Follow https://cljdoc.org/d/djblue/portal/0.35.1/doc/remote-api

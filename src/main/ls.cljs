@@ -1,8 +1,9 @@
 (ns ls 
-  "JS interop helper and Logseq APIs that could be aliased."
+  "Logseq plugin API interops."
   (:require
    [cuerdas.core :as str]
    [clojure.pprint :refer [pprint]]
+   [util :as u :refer [records?]]
    [api]
    ["@logseq/libs"]))
 
@@ -45,22 +46,8 @@
   (when block-content (update-block uuid, block-content))
   (when child-block-content (insert-block uuid, child-block-content )))
 
-(defn md-table 
-  "Generate markdown table text."
-  [data]
-  (cond
-    (map? data)
-    (str/join 
-     "\n"
-     (into ["| KEY | VALUE |" "| ----- | ----- |"]
-           (for [[k v] data]
-             (str/fmt "| %s | %s |" (name k) (str v)))))
-    :else "-- Unhanled data shape ---"))
-
-(defn md-data-block [data format]
-  (case format
-    :logseq-attrs (str "\n" (api/edn->logseq-attrs data))
-    :json (str/fmt "```json\n%s\n```" (js/JSON.stringify (clj->js data) nil 2))
-    :table (md-table data)
-    ;; Default
-    (str/fmt "```edn\n%s```" (with-out-str (pprint data)))))
+(defn reload-plugin [plugin-id]
+  ;; In JS console: LSPluginCore.reload("logseq-url-plus")
+  ;; cljs REPL runtime lives in an iframe. 
+  ;; Thus `top ` required to call LSPluginCore in parent.
+  (js-invoke js/top.LSPluginCore "reload" plugin-id))

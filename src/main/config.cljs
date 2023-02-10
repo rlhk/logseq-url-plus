@@ -3,6 +3,8 @@
 (def token-semantics
   {:website "Website" :api "API" :word "Word"})
 
+(def block-attrs [:token :token-label :url :block-content :block-content-before-token])
+
 (def metadata-formats
   {:edn "EDN"
    :json "JSON"

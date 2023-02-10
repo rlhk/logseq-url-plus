@@ -1,4 +1,5 @@
 (ns util
+  "Utility helpers for data transformation, DOM etc..."
   (:require
    [clojure.walk :refer [keywordize-keys]]
    [medley.core :refer [filter-vals]]
@@ -88,8 +89,5 @@
 (defn to-fixed [number places]
   (.toFixed number places))
 
-(defn reload-plugin [plugin-id]
-  ;; In JS console: LSPluginCore.reload("logseq-url-plus")
-  ;; cljs REPL runtime lives in an iframe. 
-  ;; Thus `top ` required to call LSPluginCore in parent.
-  (js-invoke js/top.LSPluginCore "reload" plugin-id))
+(defn records? [data]
+  (and (sequential? data), (map? (first data))))
