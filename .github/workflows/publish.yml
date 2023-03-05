@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: '18'
       - name: Prepare Clojure Tools
-        uses: DeLaGuardo/setup-clojure@10.1
+        uses: DeLaGuardo/setup-clojure@10.2
         with: 
           bb: latest
       - name: Build Code
@@ -30,7 +30,7 @@ jobs:
           zip -r ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip ${{ env.PLUGIN_NAME }}
           ls
       - name: Create Release
-        uses: ncipollo/release-action@v1.11.2
+        uses: ncipollo/release-action@v1.12.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ github.ref }}

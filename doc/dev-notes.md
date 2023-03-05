@@ -112,7 +112,11 @@ Given a REPL Setup in VSCode as specified above, evaluating expressions can be d
 - [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
 - [x] Move logseq/libs from index.html to `ns require` when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061. The issue was fixed as of @logseq/libs version 0.0.11
 
-### Prior Arts and Reference Plugins
+### Misc.
+- Use [Antq](https://github.com/liquidz/antq) to find outdated Clojure/Script libraries
+  Follow official setup to `$HOME/.clojure/deps.edn` then and `clojure -M:outdated`
+
+### Reference
 - https://github.com/logseq/logseq-plugin-samples (official sample)
 - https://github.com/pengx17/logseq-plugin-link-preview
 - https://github.com/0x7b1/logseq-plugin-automatic-url-title

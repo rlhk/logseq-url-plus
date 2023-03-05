@@ -1,12 +1,14 @@
 (ns ui
   (:require 
+   [promesa.core :as p]
    [rum.core :as rum]
    [cuerdas.core :as str]
    [config :refer [plugin-state block-attrs]]
    [util :as u :refer [target-value target-checked records?]]
    [api :refer [md-data-block]] 
    [ls]
-   [feat.define]))
+   [feat.define]
+   [feat.define :as define]))
 
 (defn data-table 
   ([data] (data-table nil data))
@@ -52,18 +54,26 @@
    "Block & Token Attributes"
    (select-keys state block-attrs)))
 
-(rum/defc metadata-format-option [state]
-  [:.flex
-   (for [[k v] config/metadata-formats]
-     [:label.label.cursor-pointer.w-max.mr-2
-      {:key k}
-      [:input.radio.radio-xs.mr-2
-       {:type "radio"
-        :value k
-        :name "child-block-metadata-format"
-        :checked (= k (-> state :option :child-block-format))
-        :on-change #(swap! plugin-state assoc-in [:option :child-block-format] (str/keyword (target-value %)))}]
-      [:span.label-text.text-xs v]])])
+(rum/defc child-block-options
+  [{:keys [option] :as state}]
+  (let [semantics (-> option :semantics)
+        radio-options 
+        (select-keys 
+         config/child-block-options 
+         (case semantics
+           :word [:definition]
+           [:edn :json :logseq-attrs :table]))]
+    [:.flex
+     (for [[k v] radio-options]
+       [:label.label.cursor-pointer.w-max.mr-2
+        {:key k}
+        [:input.radio.radio-xs.mr-2
+         {:type "radio"
+          :value k
+          :name "child-block-metadata-format"
+          :checked (= k (-> state :option :child-block-format))
+          :on-change #(swap! plugin-state assoc-in [:option :child-block-format] (str/keyword (target-value %)))}]
+        [:span.label-text.text-xs v]])]))
 
 (rum/defc template-editor
   [state & {:keys [template-key template-type label placeholder class]}]
@@ -83,7 +93,7 @@
        :value (get state template-key "")
        :on-change #(swap! plugin-state assoc template-key (target-value %))}]
      :select
-     (if (-> state :option :append-child-block?) (metadata-format-option state))
+     (if (-> state :option :append-child-block?) (child-block-options state))
      #_[:label.label.cursor-pointer
         [:span.label-text "Red"]
         [:input.checkbox.checkbox-xs {:type "checkbox" :name "r0"}]]
@@ -101,14 +111,12 @@
               (merge (select-keys state block-attrs) (get state :meta-edn)))
      :child-template 
      (str "NOTE: Metadata/data will be rendered in child block as: " 
-          (get config/metadata-formats (-> state :option :child-block-format)))
+          (get config/child-block-options (-> state :option :child-block-format)))
      (str ":template-type " template-key " to be implemented ..."))])
 
 (rum/defc website-view [state]
-  [:<>
-   [:.overflow-x-auto.max-h-60
-    (data-table (:meta-edn state))]
-   ])
+  [:.overflow-x-auto.max-h-60
+   (data-table (:meta-edn state))])
 
 (rum/defc template-view [{:keys [option] :as state}]
   (let [{:keys [semantics]} option]
@@ -124,7 +132,7 @@
                       :template-key :child-template
                       :template-type :select
                       :label (str/fmt 
-                              "Append formatted %s metadata/data as child block" 
+                              "Append child block with <%s> metadata/data" 
                               (get config/token-semantics semantics))
                       :class "w-full pl-4")
      [:p.text-left.text-sm.font-semibold "Content Preview"]
@@ -179,7 +187,7 @@
     (case (-> state :option :semantics)
       :website
       (do
-        (println "URL+ Handle semantics: :website")
+        (u/dev-log "Handle semantics: :website")
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]
@@ -188,7 +196,7 @@
            (when append-child-block? (md-data-block (:meta-edn state) child-block-format)))))
       :api
       (do
-        (println "URL+ Handle semantics: :api") 
+        (u/dev-log "Handle semantics: :api") 
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]
@@ -196,23 +204,40 @@
          (let [{:keys [append-child-block? child-block-format]} (:option state)]
            (when append-child-block? (md-data-block (:api-edn state) child-block-format)))))
       :word
-      (do
-        (println "URL+ Handle semantics: :word"))
-      (println "action: default")))
+      (p/let [{:keys [token option]} state
+              {:keys [append-child-block? child-block-format]} option
+              auth    nil
+              url     (str "https://api.dictionaryapi.dev/api/v2/entries/en/" token)
+              api-res (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                          (p/then   #(-> %))
+                          (p/catch  #(js/console.log %)))
+              json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
+              api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                                       (p/then   #(.json %))
+                                       (p/catch  #(js/console.log %))))
+              api-edn  (when json? (u/ednize api-json))
+              definition (-> api-edn define/fmt-definition)]
+        (u/dev-log "Handle semantics: :word")
+        (u/dev-log "definition:" definition)
+        (ls/format-block-and-child
+         block-uuid
+         (when-let [block-template (:block-template state)]
+           (str/fmt block-template (select-keys state block-attrs)))
+         (when append-child-block? definition)))
+      (u/dev-log "action: default")))
   (js/logseq.hideMainUI))
 
 (rum/defc plugin-panel < rum/reactive []
-  (println "Mounting URL+ UI ...")
-  (tap> @plugin-state)
+  (u/dev-log "Updating UI ...")
+  (when goog.DEBUG (tap> @plugin-state))
   (let [state (rum/react plugin-state)]
-    ;; (println (str state))
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
      [:#url-plus-modal.url-plus-box.card.bg-base-100.shadow-xl {:class "w-3/5"}
       [:.items-center.text-center.space-y-2
        (token-input (:token state))
        [:.overflow-x-auto.max-h-72
         (block-attrs-view state)]
-       [:.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900 "Token Metadata Insights"]
+       [:.w-full.text-sm.text-left.p-1.font-semibold.text-gray-900 "Token Insights"]
        (semantic-tabs state config/token-semantics)
        (case (-> state :option :semantics)
          :api  (api-view state)
@@ -227,6 +252,7 @@
 
 (comment
   (in-ns 'ui)
+  goog.DEBUG
   plugin-state
   @plugin-state
   (-> @plugin-state :option :child-block-format)
@@ -240,7 +266,7 @@
   ;; djblue/portal experiments. 
   ;; Follow https://cljdoc.org/d/djblue/portal/0.35.1/doc/remote-api
   ;; to run portal UI hosting process
-  ;; $ rlwrap bb -cp `clj -Spath -Sdeps '{:deps {djblue/portal {:mvn/version "0.35.1"}}}'`
+  ;; $ rlwrap bb -cp `clj -Spath -Sdeps '{:deps {djblue/portal {:mvn/version "0.36.0"}}}'`
   ;; user=> (require '[portal.api :as p])
   ;; user=> (p/open {:port 5678})
   (do

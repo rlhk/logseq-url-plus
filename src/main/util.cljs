@@ -9,6 +9,10 @@
 ;; https://github.com/google/closure-library/blob/master/closure/goog/html/textextractor.js#L13
 (def decode-html-content gtext/extractTextContent)
 
+(defn dev-log [& msgs]
+  (when goog.DEBUG
+    (apply js/console.log (into ["URL+"] msgs))))
+
 (defn target-value [e]
   (.. e -target -value))
 

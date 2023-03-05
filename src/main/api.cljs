@@ -1,6 +1,6 @@
 ; CAUTION: ONLY allows pure fns to facilitate Node.js based TDD setup
 (ns api
-  "API of URL+"
+  "APIs for URL+"
   (:require
    [clojure.pprint :refer [pprint]]
    [util :as u :refer [records?]]

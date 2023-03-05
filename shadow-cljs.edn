@@ -1,10 +1,10 @@
 {:source-paths ["src/dev" "src/main" "src/test"]
  :dependencies
  [[binaryage/devtools "1.0.6"] 
-  [djblue/portal "0.35.1"]
-  [funcool/promesa "10.0.571"]
+  [djblue/portal "0.36.0"]
+  [funcool/promesa "10.0.594"]
   [medley "1.4.0"]
-  [funcool/cuerdas "2022.03.27-397"]
+  [funcool/cuerdas "2022.06.16-403"]
   [rum "0.12.10"]]
  :dev-http {8080 "dist"}
  :nrepl {:port 8702

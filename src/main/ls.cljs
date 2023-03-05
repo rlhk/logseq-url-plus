@@ -1,10 +1,8 @@
 (ns ls 
   "Logseq plugin API interops."
   (:require
-   [cuerdas.core :as str]
-   [clojure.pprint :refer [pprint]]
-   [util :as u :refer [records?]]
    [api]
+   [util :as u]
    ["@logseq/libs"]))
 
 (def show-msg js/logseq.UI.showMsg)
@@ -42,7 +40,7 @@
 
 (defn format-block-and-child
   [uuid block-content child-block-content]
-  (println "URL+ Formatting block (and child) ...")
+  (u/dev-log "Formatting block (and child) ...")
   (when block-content (update-block uuid, block-content))
   (when child-block-content (insert-block uuid, child-block-content )))
 

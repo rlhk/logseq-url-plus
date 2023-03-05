@@ -5,11 +5,12 @@
 
 (def block-attrs [:token :token-label :url :block-content :block-content-before-token])
 
-(def metadata-formats
-  {:edn "EDN"
-   :json "JSON"
-   :logseq-attrs "Attributes"
-   :table "Table"})
+(def child-block-options
+  {:edn "EDN Code"
+   :json "JSON Code"
+   :logseq-attrs "Logseq Attrs"
+   :table "MD Table"
+   :definition "Word Definition"})
 
 (def content-templates
   {:default "%(block-content)s"
