@@ -60,7 +60,7 @@
                           :tweet-author (-> api-edn :includes :users first :username)
                           :but-last    all-but-last}]
           (do
-            (println "URL+ Formatting block(s) ...")
+            (u/dev-log "Formatting block(s) ...")
             (when block (ls/update-block block-uuid, (str/fmt block attrs)))
             (if (= mode :block)
               (ls/insert-batch-block block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
@@ -68,7 +68,7 @@
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
 (defn handle-advanced-mode []
-  (println "URL+ Advanced Mode ...")
+  (u/dev-log "Advanced Mode ...")
   (js/logseq.showMainUI)
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
@@ -79,7 +79,7 @@
                                :token-label maybe-label
                                :block-content block-content
                                :block-content-before-token block-before-token
-                               :url url
+                               :url (when (http? url) url)
                                :block {:uuid block-uuid}})
     (if (http? url)
       (do
@@ -118,12 +118,12 @@
        #_(prn "Main UI visibility: " v)
        (if (:visible v)
          (do
-           (println "URL+ Mounting UI ...")
+           (u/dev-log "Mounting UI ...")
            (rum/mount (ui/plugin-panel) (.getElementById js/document "app")))
          (do
-           (println "URL+ Unmounting UI ...")
+           (u/dev-log "Unmounting UI ...")
            (swap! plugin-state select-keys config/persistent-state-keys))))))
-  (js/logseq.on "settings:changed" #(prn "settings: " %))
+  (js/logseq.on "settings:changed" #(u/dev-log "settings: " %))
   (ls/register-js-events)
   (ls/register-slash-command "URL+ Advanced ..." #(handle-advanced-mode))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
@@ -133,14 +133,14 @@
 ; Logseq handshake
 ; JS equivalent: `logseq.ready(main).catch(() => console.error)`
 (defn init []
-  (println "URL+ core.init ...")
+  (u/dev-log "core.init ...")
   ;; Top level logseq methods have to be called directly
   (-> (p/promise (js/logseq.ready))
       (p/then main)
       (p/catch #(js/console.error))))
 
 (defn reload []
-  (println "... core.reload!")
+  (u/dev-log "... core.reload!")
   (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
   #_(init))
 
