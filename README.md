@@ -2,9 +2,9 @@
 
 URL+ is a [Logseq](https://logseq.com) plugin written in [ClojureScript](https://clojurescript.org) with [shadow-cljs](https://github.com/thheller/shadow-cljs) as the main tooling.
 
-The plugin retrieves common information based on the last term of an editing block. 
+The plugin takes the last token of an editing block, be it a word or URL, and augments the block with related metadata from the internet. 
 
-If the last term is a valid URL, metadata or API response is fetched, then the block is modified by applying a selected template. The plugin could also fetch compact dictionary definition of a word term, or attach a few useful links to it.
+If the last token is a valid URL, metadata or API response is fetched, then the block is modified by applying a selected template. The plugin also fetches compact dictionary definition of a word term, or attach a few useful links to it.
 
 ![demo](demo.gif)
 
@@ -25,7 +25,8 @@ If the last term is a valid URL, metadata or API response is fetched, then the b
   - Paste the token in the plugin settings panel
   - For details on the Twitter developer programme, see https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens
 - `URL+ Inspector ...`
-  - Opens the inspector UI for token insight and template customization
+  - Opens the inspector UI for token insights and template customization
+  ![Inspector UI](inspector-ui.png)
 
 ## Why Another URL Formatter?
 

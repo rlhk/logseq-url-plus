@@ -25,7 +25,7 @@ jobs:
           npm install -g yarn
           bb build
           mkdir ${{ env.PLUGIN_NAME }}
-          cp package.json README.md demo.gif ${{ env.PLUGIN_NAME }}
+          cp package.json README.md demo.gif inspector-ui.png ${{ env.PLUGIN_NAME }}
           mv dist ${{ env.PLUGIN_NAME }}
           zip -r ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip ${{ env.PLUGIN_NAME }}
           ls
