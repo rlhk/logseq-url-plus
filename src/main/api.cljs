@@ -1,4 +1,3 @@
-; CAUTION: ONLY allows pure fns to facilitate Node.js based TDD setup
 (ns api
   "APIs for URL+"
   (:require

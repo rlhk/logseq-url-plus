@@ -4,10 +4,9 @@
    [rum.core :as rum]
    [cuerdas.core :as str]
    [config :refer [plugin-state block-attrs]]
-   [util :as u :refer [target-value target-checked records?]]
+   [util :as u :refer [devlog target-value target-checked records?]]
    [api :refer [md-data-block]] 
    [ls]
-   [feat.define]
    [feat.define :as define]))
 
 (defn data-table 
@@ -110,7 +109,7 @@
      (str/fmt (get state template-key "")
               (merge (select-keys state block-attrs) (get state :meta-edn)))
      :child-template 
-     (str "NOTE: Metadata/data will be rendered in child block as: " 
+     (str/fmt "NOTE: Child block will render metadata/data as: <%s>" 
           (get config/child-block-options (-> state :option :child-block-format)))
      (str ":template-type " template-key " to be implemented ..."))])
 
@@ -187,7 +186,7 @@
     (case (-> state :option :semantics)
       :website
       (do
-        (u/dev-log "Handle semantics: :website")
+        (devlog "Handle semantics: :website")
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]
@@ -196,7 +195,7 @@
            (when append-child-block? (md-data-block (:meta-edn state) child-block-format)))))
       :api
       (do
-        (u/dev-log "Handle semantics: :api") 
+        (devlog "Handle semantics: :api") 
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]
@@ -206,29 +205,24 @@
       :word
       (p/let [{:keys [token option]} state
               {:keys [append-child-block? child-block-format]} option
-              auth    nil
-              url     (str "https://api.dictionaryapi.dev/api/v2/entries/en/" token)
-              api-res (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                          (p/then   #(-> %))
-                          (p/catch  #(js/console.log %)))
-              json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
-              api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                                       (p/then   #(.json %))
-                                       (p/catch  #(js/console.log %))))
-              api-edn  (when json? (u/ednize api-json))
-              definition (-> api-edn define/fmt-definition)]
-        (u/dev-log "Handle semantics: :word")
-        (u/dev-log "definition:" definition)
+              url      (str "https://api.dictionaryapi.dev/api/v2/entries/en/" token)
+              api-json (-> (ls/fetch-api url nil)
+                           (p/then   #(-> %))
+                           (p/catch  #(js/console.log %)))
+              definition (-> api-json u/ednize define/fmt-definition)]
+        (devlog "Handle semantics: :word")
+        (devlog "definition:" definition)
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]
            (str/fmt block-template (select-keys state block-attrs)))
-         (when append-child-block? definition)))
-      (u/dev-log "action: default")))
+         (when (and append-child-block? (= child-block-format :definition)) 
+           definition)))
+      (devlog "action: default")))
   (js/logseq.hideMainUI))
 
 (rum/defc plugin-panel < rum/reactive []
-  (u/dev-log "Updating UI ...")
+  (devlog "Updating UI ...")
   (when goog.DEBUG (tap> @plugin-state))
   (let [state (rum/react plugin-state)]
     [:main.fixed.inset-0.flex.items-center.justify-center.url-plus-backdrop
@@ -270,8 +264,8 @@
   ;; user=> (require '[portal.api :as p])
   ;; user=> (p/open {:port 5678})
   (do
-    (require '[portal.client.web :as p])
-    (def submit (partial p/submit {:port 5678}))
+    (require '[portal.client.web :as portal])
+    (def submit (partial portal/submit {:port 5678}))
     (add-tap #'submit))
   (tap> [:hello :world])
   (tap> @plugin-state)

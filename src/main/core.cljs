@@ -6,7 +6,7 @@
    [rum.core :as rum]
    ["@logseq/libs"]
    ["link-preview-js" :as link-preview]
-   [util :as u :refer [decode-html-content ednize http? else-and-last]]
+   [util :as u :refer [devlog decode-html-content ednize http? else-and-last]]
    [ls] [config :refer [plugin-state]] [api] [ui]
    [feat.define :as define]))
 
@@ -34,14 +34,10 @@
         (ls/show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (ednize meta-res)
-                api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                api-json (-> (ls/fetch-api url auth)
                              (p/then   #(-> %))
                              (p/catch  #(js/console.log %)))
-                json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
-                api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                                         (p/then   #(.json %))
-                                         (p/catch  #(js/console.log %))))
-                api-edn  (when json? (ednize api-json))
+                api-edn  (ednize api-json)
                 attrs    {:token       last-token
                           :url         url
                           :link-or-url (if maybe-label (str/fmt "[$0]($1)" [maybe-label url]), url)
@@ -60,15 +56,15 @@
                           :tweet-author (-> api-edn :includes :users first :username)
                           :but-last    all-but-last}]
           (do
-            (u/dev-log "Formatting block(s) ...")
+            (devlog "Formatting block(s) ...")
             (when block (ls/update-block block-uuid, (str/fmt block attrs)))
             (if (= mode :block)
               (ls/insert-batch-block block-uuid, (clj->js (:api-blocks attrs)), (clj->js {:sibling false}))
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
-(defn handle-advanced-mode []
-  (u/dev-log "Advanced Mode ...")
+(defn handle-inspector-mode []
+  (devlog "Inspector mode ...")
   (js/logseq.showMainUI)
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
@@ -90,14 +86,10 @@
                 auth (cond
                        (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
                        :else nil)
-                api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+                api-json (-> (ls/fetch-api url auth)
                              (p/then   #(-> %))
                              (p/catch  #(js/console.log %)))
-                json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))
-                api-json (when json? (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                                         (p/then   #(.json %))
-                                         (p/catch  #(js/console.log %))))
-                api-edn  (when json? (ednize api-json))
+                api-edn  (ednize api-json)
                 api-record-count (count api-edn)]
           (swap! plugin-state
                  merge {;:meta-json (js/JSON.stringify meta-res nil 2)
@@ -115,17 +107,17 @@
    "ui:visible:changed"
    (fn [v]
      (let [v (ednize v)]
-       #_(prn "Main UI visibility: " v)
+       (devlog "Main UI visibility: " v)
        (if (:visible v)
          (do
-           (u/dev-log "Mounting UI ...")
+           (devlog "Mounting UI ...")
            (rum/mount (ui/plugin-panel) (.getElementById js/document "app")))
          (do
-           (u/dev-log "Unmounting UI ...")
+           (devlog "Unmounting UI ...")
            (swap! plugin-state select-keys config/persistent-state-keys))))))
-  (js/logseq.on "settings:changed" #(u/dev-log "settings: " %))
+  (js/logseq.on "settings:changed" #(devlog "settings: " %))
   (ls/register-js-events)
-  (ls/register-slash-command "URL+ Advanced ..." #(handle-advanced-mode))
+  (ls/register-slash-command "URL+ Inspector ..." #(handle-inspector-mode))
   (doseq [{:keys [desc] :as opts} config/slash-commands]
     (ls/register-slash-command desc, #(handle-slash-cmd opts)))
   (ls/show-msg "URL+ loaded ..."))
@@ -133,14 +125,14 @@
 ; Logseq handshake
 ; JS equivalent: `logseq.ready(main).catch(() => console.error)`
 (defn init []
-  (u/dev-log "core.init ...")
+  (devlog "core.init ...")
   ;; Top level logseq methods have to be called directly
   (-> (p/promise (js/logseq.ready))
       (p/then main)
       (p/catch #(js/console.error))))
 
 (defn reload []
-  (u/dev-log "... core.reload!")
+  (devlog "... core.reload!")
   (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
   #_(init))
 

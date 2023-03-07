@@ -6,10 +6,10 @@
 (def block-attrs [:token :token-label :url :block-content :block-content-before-token])
 
 (def child-block-options
-  {:edn "EDN Code"
-   :json "JSON Code"
-   :logseq-attrs "Logseq Attrs"
-   :table "MD Table"
+  {:json "JSON Code"
+   :edn  "EDN Code"
+   :logseq-attrs "Logseq Attributes"
+   :table "Markdown Table"
    :definition "Word Definition"})
 
 (def content-templates
@@ -31,8 +31,6 @@
     ;; :block (use :api-blocks attrs) as children blocks. Ignore :child template )
     :mode :template
     :block "%(but-last)s[%(title)s](%(url)s)"}
-   #_{:desc "URL+ Advanced ..."
-    :op :advanced} ;; defaults to :default
    {:desc "URL+ [title](url) description"
     :type :meta
     :block "%(but-last)s[%(title)s](%(url)s) %(description)s"}
