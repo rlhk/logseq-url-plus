@@ -101,6 +101,8 @@
             (swap! plugin-state assoc-in [:option :semantics] :api))))
       (swap! plugin-state assoc-in [:option :semantics] :word))))
 
+(defn cmd-enabled? [m] (aget js/logseq.settings (:setting-key m)))
+
 (defn main []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
   (js/logseq.on 
@@ -117,15 +119,11 @@
            (swap! plugin-state select-keys config/persistent-state-keys))))))
   (js/logseq.on "settings:changed" #(devlog "settings: " %))
   (ls/register-js-events)
-  (let [config-enabled? (fn [m] (let [setting-key (:setting m)
-                                     setting-value (aget js/logseq.settings setting-key)]
-                                 (when setting-value m)))
-        enabled-slash-commands (filter config-enabled? config/slash-commands)]
-    (when (config-enabled? {:setting "URLpInspector"})
-      (ls/register-slash-command "URL+ Inspector ..." #(handle-inspector-mode)))
-    (doseq [{:keys [desc setting] :as opts} enabled-slash-commands]
-      (ls/register-slash-command desc, #(handle-slash-cmd opts))))
-
+  (when (cmd-enabled? {:setting-key "UrlPlusInspector"})
+    (ls/register-slash-command "URL+ Inspector ..." #(handle-inspector-mode)))
+  (doseq [{:keys [desc] :as opts} (filter cmd-enabled? config/slash-commands)]
+    (devlog "Registering:" desc)
+    (ls/register-slash-command desc, #(handle-slash-cmd opts)))
   (ls/show-msg "URL+ loaded ..."))
 
 ; Logseq handshake
