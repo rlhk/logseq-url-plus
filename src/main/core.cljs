@@ -117,9 +117,15 @@
            (swap! plugin-state select-keys config/persistent-state-keys))))))
   (js/logseq.on "settings:changed" #(devlog "settings: " %))
   (ls/register-js-events)
-  (ls/register-slash-command "URL+ Inspector ..." #(handle-inspector-mode))
-  (doseq [{:keys [desc] :as opts} config/slash-commands]
-    (ls/register-slash-command desc, #(handle-slash-cmd opts)))
+  (let [config-enabled? (fn [m] (let [setting-key (:setting m)
+                                     setting-value (aget js/logseq.settings setting-key)]
+                                 (when setting-value m)))
+        enabled-slash-commands (filter config-enabled? config/slash-commands)]
+    (when (config-enabled? {:setting "URLpInspector"})
+      (ls/register-slash-command "URL+ Inspector ..." #(handle-inspector-mode)))
+    (doseq [{:keys [desc setting] :as opts} enabled-slash-commands]
+      (ls/register-slash-command desc, #(handle-slash-cmd opts))))
+
   (ls/show-msg "URL+ loaded ..."))
 
 ; Logseq handshake
