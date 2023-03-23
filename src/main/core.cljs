@@ -1,8 +1,8 @@
 (ns core
   (:require
-   [promesa.core :as p]
    [clojure.pprint :refer [pprint]]
    [cuerdas.core :as str]
+   [promesa.core :as p]
    [rum.core :as rum]
    ["@logseq/libs"]
    ["link-preview-js" :as link-preview]

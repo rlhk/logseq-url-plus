@@ -79,7 +79,7 @@
 (defn- desc->settings-title [s]
   (str "Register '" s "' in global slash commands"))
 
-(defn- slash-command->setting-entry [{:keys [desc setting-key]}]
+(defn- slash-cmd->setting [{:keys [desc setting-key]}]
   (let [description (desc->settings-title desc)]
     {:key setting-key
      :type "boolean"
@@ -88,20 +88,18 @@
      :default true}))
 
 (def ls-plugin-settings
-  (let [twitter-settings [{:key "TwitterAccessToken"
-                           :type "string"
-                           :title "Twitter Access Token"
-                           :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
-                           :default ""}]
-        inspector-settings [{:key "UrlPlusInspector"
-                             :type "boolean"
-                             :title "URL+ Inspector ..."
-                             :description (desc->settings-title "URL+ Inspector ...")
-                             :default true}]
-        slash-cmd-settings (mapv slash-command->setting-entry slash-commands)]
-    (into [] (concat twitter-settings
-                     inspector-settings
-                     slash-cmd-settings))))
+  (let [inspector-setting [{:key "UrlPlusInspector"
+                            :type "boolean"
+                            :title "URL+ Inspector ..."
+                            :description (desc->settings-title "URL+ Inspector ...")
+                            :default true}]
+        twitter-setting   [{:key "TwitterAccessToken"
+                            :type "string"
+                            :title "Twitter Access Token"
+                            :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
+                            :default ""}]
+        slash-cmd-settings (mapv slash-cmd->setting slash-commands)]
+    (concat inspector-setting twitter-setting slash-cmd-settings)))
 
 (def persistent-state-keys
   [:block-template :option])
