@@ -95,3 +95,17 @@
 
 (defn records? [data]
   (and (sequential? data), (map? (first data))))
+ 
+(defn tokenize-str 
+  "Parse a string of words into a vector of tokens by both comma and whitepace."
+  [s]
+  (-> (str/trim s)
+      (str/replace #"," " ")
+      (str/split #"\s+")))
+
+(defn exclude-include-ks 
+  "Exclude then include keys from a map."
+  [m exclude-keys include-keys]
+  (cond-> m
+    (seq exclude-keys) (select-keys (remove (set exclude-keys) (keys m)))
+    (seq include-keys) (select-keys include-keys)))

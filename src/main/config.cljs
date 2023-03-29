@@ -88,18 +88,27 @@
      :default true}))
 
 (def ls-plugin-settings
-  (let [inspector-setting [{:key "UrlPlusInspector"
-                            :type "boolean"
-                            :title "URL+ Inspector ..."
-                            :description (desc->settings-title "URL+ Inspector ...")
-                            :default true}]
-        twitter-setting   [{:key "TwitterAccessToken"
-                            :type "string"
-                            :title "Twitter Access Token"
-                            :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
-                            :default ""}]
-        slash-cmd-settings (mapv slash-cmd->setting slash-commands)]
-    (concat inspector-setting twitter-setting slash-cmd-settings)))
+  (concat [{:key "TwitterAccessToken"
+            :type "string"
+            :title "Twitter Access Token"
+            :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
+            :default ""}
+           {:key "UrlPlusExcludeAttrs"
+            :type "string"
+            :title "Attributes to EXCLUDE in URL metadata."
+            :description "List attributes to exclude, separated by comma or space. Case sensitive."
+            :default ""}
+           {:key "UrlPlusIncludeAttrs"
+            :type "string"
+            :title "Attributes to INCLUDE in URL metadata."
+            :description "List attributes to include, separated by comma or space. Case sensitive."
+            :default ""}
+           {:key "UrlPlusInspector"
+            :type "boolean"
+            :title "URL+ Inspector ..."
+            :description (desc->settings-title "URL+ Inspector ...")
+            :default true}]
+          (mapv slash-cmd->setting slash-commands)))
 
 (def persistent-state-keys
   [:block-template :option])

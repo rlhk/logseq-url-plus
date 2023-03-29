@@ -10,8 +10,14 @@
    [ls] [config :refer [plugin-state]] [api] [ui]
    [feat.define :as define]))
 
-(defn handle-slash-cmd [{:keys [op type mode block child]
-                         :or   {op :default, mode :template}}]
+(defn tokenize-setting-str [setting-key]
+  (let [setting-str (js->clj (aget js/logseq.settings setting-key))]
+    (if (str/blank? setting-str)
+      []
+      (u/tokenize-str setting-str))))
+
+(defn handle-slash-cmd [{:keys [type mode block child]
+                         :or   {mode :template}}]
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
           block-content (ls/get-editing-block-content)
@@ -33,7 +39,10 @@
       (do
         (ls/show-msg (str "Fetching: " url))
         (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
-                meta-edn (ednize meta-res)
+                meta-edn (u/exclude-include-ks
+                          (ednize meta-res)
+                          (map keyword (tokenize-setting-str "UrlPlusExcludeAttrs"))
+                          (map keyword (tokenize-setting-str "UrlPlusIncludeAttrs")))
                 api-json (-> (ls/fetch-api url auth)
                              (p/then   #(-> %))
                              (p/catch  #(js/console.log %)))
@@ -45,7 +54,7 @@
                           :description (:description meta-edn)
                           :definition  (-> api-edn define/fmt-definition)
                           :meta-edn    (with-out-str (pprint meta-edn))
-                          :meta-json   (js/JSON.stringify meta-res nil 2) ;built-in prettify
+                          :meta-json   (js/JSON.stringify meta-res nil 2) ;JS built-in prettify
                           :meta-attrs  (api/edn->logseq-attrs meta-edn)
                           :api-edn     (-> api-edn pprint with-out-str)
                           :api-json    (js/JSON.stringify api-json nil 2)
@@ -63,7 +72,7 @@
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
-(defn handle-inspector-mode []
+(defn show-inspector-ui []
   (devlog "Inspector mode ...")
   (js/logseq.showMainUI)
   (p/let [current-block (ls/get-current-block)
@@ -120,7 +129,7 @@
   (js/logseq.on "settings:changed" #(devlog "settings: " %))
   (ls/register-js-events)
   (when (cmd-enabled? {:setting-key "UrlPlusInspector"})
-    (ls/register-slash-command "URL+ Inspector ..." #(handle-inspector-mode)))
+    (ls/register-slash-command "URL+ Inspector ..." #(show-inspector-ui)))
   (doseq [{:keys [desc] :as opts} (filter cmd-enabled? config/slash-commands)]
     (devlog "Registering:" desc)
     (ls/register-slash-command desc, #(handle-slash-cmd opts)))
