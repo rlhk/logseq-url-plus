@@ -16,8 +16,11 @@
       []
       (u/tokenize-str setting-str))))
 
-(defn handle-slash-cmd [{:keys [type mode block child]
-                         :or   {mode :template}}]
+(defn handle-slash-cmd 
+  "Dispatcher for slash commands.
+   The functions are based on the selected token and command options."
+  [{:keys [type mode block child]
+    :or   {mode :template}}]
   (p/let [current-block (ls/get-current-block)
           block-uuid    (aget current-block "uuid")
           block-content (ls/get-editing-block-content)
@@ -72,7 +75,12 @@
               (when child (ls/insert-block block-uuid, (str/fmt child attrs)))))))
       (ls/show-msg (str/fmt "Invalid URL: \"%s\"" last-token)))))
 
-(defn show-inspector-ui []
+(defn show-inspector-ui
+  "The plugin's inspector mode provides an UI with similar functionalities as the slash commands.
+   It also provides more insights about the token by pre-fetching.
+   They are currently implemented independently.
+   TODO: refactor to share the same codebase."
+  []
   (devlog "Inspector mode ...")
   (js/logseq.showMainUI)
   (p/let [current-block (ls/get-current-block)
@@ -110,9 +118,9 @@
             (swap! plugin-state assoc-in [:option :semantics] :api))))
       (swap! plugin-state assoc-in [:option :semantics] :word))))
 
-(defn cmd-enabled? [m] (aget js/logseq.settings (:setting-key m)))
-
-(defn main []
+(defn main 
+  "Entry point of the plugin."
+  []
   (js/logseq.useSettingsSchema (clj->js config/ls-plugin-settings))
   (js/logseq.on 
    "ui:visible:changed"
@@ -128,26 +136,31 @@
            (swap! plugin-state select-keys config/persistent-state-keys))))))
   (js/logseq.on "settings:changed" #(devlog "settings: " %))
   (ls/register-js-events)
-  (when (cmd-enabled? {:setting-key "UrlPlusInspector"})
+  (when (ls/cmd-enabled? {:setting-key "UrlPlusInspector"})
     (ls/register-slash-command "URL+ Inspector ..." #(show-inspector-ui)))
-  (doseq [{:keys [desc] :as opts} (filter cmd-enabled? config/slash-commands)]
+  (doseq [{:keys [desc] :as opts} (filter ls/cmd-enabled? config/slash-commands)]
     (devlog "Registering:" desc)
     (ls/register-slash-command desc, #(handle-slash-cmd opts)))
   (ls/show-msg "URL+ loaded ..."))
 
 ; Logseq handshake
 ; JS equivalent: `logseq.ready(main).catch(() => console.error)`
-(defn init []
+(defn init 
+  "Injects the plugin to Logseq."
+  []
+  ;; NOTE: Top level logseq methods have to be called directly
   (devlog "core.init ...")
-  ;; Top level logseq methods have to be called directly
   (-> (p/promise (js/logseq.ready))
       (p/then main)
       (p/catch #(js/console.error))))
 
-(defn reload []
+(defn reload 
+  "Reload plugin upon code change for dev mode."
+  []
   (devlog "... core.reload!")
   (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
   #_(init))
 
 (comment
-  (ls/reload-plugin "logseq-url-plus"))
+  (ls/reload-plugin "logseq-url-plus")
+  (:doc (meta #'reload)))

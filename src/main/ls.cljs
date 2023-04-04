@@ -68,6 +68,8 @@
   ;; Thus `top ` required to call LSPluginCore in parent.
   (js-invoke js/top.LSPluginCore "reload" plugin-id))
 
+(defn cmd-enabled? [m] (aget js/logseq.settings (:setting-key m)))
+
 (comment
   (let [token "wall"
         good-url (str "https://api.dictionaryapi.dev/api/v2/entries/en/" token)
