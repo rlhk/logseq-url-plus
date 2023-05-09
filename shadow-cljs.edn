@@ -1,8 +1,10 @@
 {:source-paths ["src/dev" "src/main" "src/test"]
  :dependencies
- [[binaryage/devtools "1.0.7"]
+ [;; Dev dependencies
+  [binaryage/devtools "1.0.7"]
   [org.slf4j/slf4j-simple "2.0.7"]
   [djblue/portal "0.38.2"]
+  ;; Library dependencies
   [funcool/promesa "10.0.594"]
   [medley "1.4.0"]
   [funcool/cuerdas "2022.06.16-403"]
