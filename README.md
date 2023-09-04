@@ -31,10 +31,10 @@ If the last token is a valid URL, metadata or API response is fetched, then the 
 ## Why Another URL Formatter?
 
 - Prefer slash command `/` over autoformat
-- Need more formatting templates beyond the default `[title](url)`. Customizable templates in plan
+- Need more formatting templates beyond the default `[title](url)`
 - Works for block with multiple terms and even multiline. The plugin only considers the last term without other content in the active editing block
-- Presist URL metadata or API response in graph
-- Learn Logseq plugin dev in ClojureScript (Sample projects are rare when this project started)
+- Persist URL metadata or API response in graph
+- Learn Logseq plugin dev with ClojureScript + Rum + Babashka + tailwindcss (Sample ClojureScript based plugin projects are rare when this project started)
 
 ## Plugin Devevelopment in ClojureScript
 
