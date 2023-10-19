@@ -64,8 +64,8 @@
 
 (defn reload-plugin [plugin-id]
   ;; In JS console: LSPluginCore.reload("logseq-url-plus")
-  ;; cljs REPL runtime lives in an iframe. 
-  ;; Thus `top ` required to call LSPluginCore in parent.
+  ;; Since cljs REPL runtime lives in an iframe. 
+  ;; Use `top.LSPluginCore` in the parent window.
   (js-invoke js/top.LSPluginCore "reload" plugin-id))
 
 (comment

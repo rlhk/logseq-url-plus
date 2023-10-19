@@ -35,9 +35,12 @@ In case of Java version related errors, you might want to manage Java with https
 > **NOTE:** Moved to babashka based tasks. Old npm scripts are kept as reference.
 
 The dev task do the following things:
-1. Watch code changes and perform compilation if needed
+1. Watch code changes and perform compilation if touched
 2. Watch and run tests upon code or unit test code change
+
 > **NOTE:** Current Test Driven Development (TDD) setup runs on Node.js runtime.
+
+Check `bb.edn` or run `bb tasks` to list all available tasks
 
 In the Logseq App
 
@@ -47,9 +50,12 @@ In the Logseq App
 
 #### Editor Setup
 
-Atom Editor + Vim mode + Parinfer was my long time preference for Clojure editing. However as Atom is being sunsetting, I've switched to VSCode + Vim + [Paredit](https://calva.io/paredit/) in [Calva](https://calva.io). Took a while to adjust my editing muscle, but the experience is getting greater. 
+- [Visual Studio Code - VSCode](https://code.visualstudio.com)
+- [VSCode Neovim](https://marketplace.visualstudio.com/items?itemName=asvetliakov.vscode-neovim)
+- [Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva)
+  - [Paredit](https://calva.io/paredit/) in [Calva](https://calva.io)
 
-#### REPL Setup in VSCode
+#### REPL Setup in VSCode with Calva
 
 Calva's REPL client can connnect to the REPL server provided by the shadow-cljs dev mode runtime in Logseq App.
 - Make sure Logseq Desktop App developer mode is enabled and `bb dev` is running as mentioned above
@@ -112,14 +118,17 @@ Given a REPL Setup in VSCode as specified above, evaluating expressions can be d
 - [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
 - [x] Move logseq/libs from index.html to `ns require` when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061. The issue was fixed as of @logseq/libs version 0.0.11
 
-### Misc.
-- Use [Antq](https://github.com/liquidz/antq) to find outdated Clojure/Script libraries
-  Follow official setup to `$HOME/.clojure/deps.edn` then and `clojure -M:outdated`
+### Library Management
 
-### Reference
+- Run `bb outdated` to check outdated dependencies
+  - The bb task uses [Antq](https://github.com/liquidz/antq) to find outdated Clojure/Script libraries
+  - Follow official setup to modify `$HOME/.clojure/deps.edn`
+- Modify `shadow-cljs.edn` to update dependencies
+
+### Reference Repositories
+
 - https://github.com/logseq/logseq-plugin-samples (official sample)
 - https://github.com/pengx17/logseq-plugin-link-preview
 - https://github.com/0x7b1/logseq-plugin-automatic-url-title
-- https://github.com/superman66/logseq-plugin-url-md (not recommended by author)
 - https://github.com/trashhalo/logseq-dictionary
 - https://github.com/kurtharriger/logseq-things3-plugin (ClojureScript but not in marketplace)
