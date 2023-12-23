@@ -11,7 +11,7 @@
   dev        {:depends [prep]
               :task (run '-dev {:parallel true})}
   outdated   {:doc "Check if there's any oudated dependencies." 
-              :task (x "clojure -M:outdated")}
+              :task (x "npx npm-check-updates", "clojure -M:outdated")}
   portal     (x "script/bb-repl-with-portal.sh")
   build-cljs (x "yarn", "npx shadow-cljs release :plugin")
   build-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")

@@ -1,4 +1,4 @@
-const { transparent } = require('daisyui/src/colors');
+const { transparent } = require('daisyui/src/theming');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -14,14 +14,6 @@ module.exports = {
     require("daisyui")
   ],
   daisyui: {
-    themes: [
-      {
-        light: {
-          ...require('daisyui/src/colors/themes')['[data-theme=retro]'],
-          html: {
-            'background': transparent,
-          }
-      }
-    }],
+    themes: ["retro", "light", "dark", "cupcake"]
   }
 }
