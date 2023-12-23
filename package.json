@@ -1,6 +1,6 @@
 {
   "name": "logseq-url-plus",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A Logseq plugin that takes the last token of an editing block, be it a word or URL, and augments the block with related metadata from the internet.",
   "author": "https://github.com/rlhk",
   "main": "./dist/index.html",
@@ -17,10 +17,10 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.9",
-    "shadow-cljs": "2.20.13"
+    "shadow-cljs": "2.26.2"
   },
   "dependencies": {
-    "@logseq/libs": "0.0.14",
+    "@logseq/libs": "0.0.15",
     "daisyui": "^2.46.1",
     "help": "^3.0.2",
     "link-preview-js": "^3.0.4",

@@ -45,7 +45,7 @@ Check `bb.edn` or run `bb tasks` to list all available tasks
 In the Logseq App
 
 - Enable developer mode in Logseq
-- Click "Load unpacked plugin" and open the ./dist folder
+- Click "Load unpacked plugin" and open the root folder of this project which contains the `package.json` and `dist` folder. Logseq plugin system requires entry `package.json` even in dev mode
 - To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
 
 #### Editor Setup

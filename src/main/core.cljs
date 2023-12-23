@@ -147,7 +147,7 @@
 (defn reload []
   (devlog "... core.reload!")
   (rum/mount (ui/plugin-panel) (.getElementById js/document "app"))
-  #_(init))
+  (init))
 
 (comment
   (ls/reload-plugin "logseq-url-plus"))
