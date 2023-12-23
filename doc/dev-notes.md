@@ -120,7 +120,7 @@ Given a REPL Setup in VSCode as specified above, evaluating expressions can be d
 
 ### Library Management
 
-- Run `bb outdated` to check outdated dependencies
+- Run `bb deps` to check dependency updates for both Node and Clojure/Script libraries 
   - The bb task uses [Antq](https://github.com/liquidz/antq) to find outdated Clojure/Script libraries
   - Follow official setup to modify `$HOME/.clojure/deps.edn`
 - Modify `shadow-cljs.edn` to update dependencies

@@ -8,15 +8,19 @@
   watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
   watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
   -dev       {:depends [watch-cljs watch-tw]}
-  dev        {:depends [prep]
+  dev        {:doc "Main development task."
+              :depends [prep]
               :task (run '-dev {:parallel true})}
-  outdated   {:doc "Check if there's any oudated dependencies." 
+  deps       {:doc "Check dependency updates."
               :task (x "npx npm-check-updates", "clojure -M:outdated")}
-  portal     (x "script/bb-repl-with-portal.sh")
-  build-cljs (x "yarn", "npx shadow-cljs release :plugin")
-  build-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")
+  portal     {:doc "Open Portal UI. (https://github.com/djblue/portal)" 
+              :task (x "script/bb-repl-with-portal.sh")}
+  build-cljs {:doc "Compile ClojureScript."
+              :task (x "yarn", "npx shadow-cljs release :plugin")}
+  build-tw   {:doc "Compile Tailwind CSS." 
+              :task (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")}
   build      {:depends [prep build-cljs build-tw]}
-  release    {:doc "Add version tag; push to GitHub for triggering build and release workflow."
+  release    {:doc "Add Git version tag; push and trigger build and release GitHub workflow."
               :task (do (println "Releasing version:" v "...")
                         (x (format "git tag -a %s -m \"Release version: %s\"" v v)
                            (format "git push origin %s" v)))}}}
