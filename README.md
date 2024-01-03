@@ -2,7 +2,7 @@
 
 URL+ is a [Logseq](https://logseq.com) plugin written in [ClojureScript](https://clojurescript.org) with [shadow-cljs](https://github.com/thheller/shadow-cljs) as the main tooling.
 
-The plugin takes the last token of an editing block, be it a word or URL, and augments the block with related metadata from the internet. 
+The plugin takes the last token of an editing block, be it a word or URL, and augments the block with associated metadata in various formats. 
 
 If the last token is a valid URL, metadata or API response is fetched, then the block is modified by applying a selected template. The plugin also fetches compact dictionary definition of a word term, or attach a few useful links to it.
 
