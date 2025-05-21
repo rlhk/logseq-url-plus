@@ -11,11 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.2.2
       - name: Prepare NodeJS
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
       - name: Prepare Clojure Tools
         uses: DeLaGuardo/setup-clojure@13.2
         with: 
