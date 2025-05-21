@@ -17,4 +17,3 @@
           (api/md-link->label-and-url "https://face.com")))
   (is (=  ["nice face" "anything"]
           (api/md-link->label-and-url "[nice face](anything)"))))
-

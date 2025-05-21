@@ -1,6 +1,6 @@
 {
   "name": "logseq-url-plus",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A Logseq plugin that takes the last token of an editing block, be it a word or URL, and augments the block with related metadata from the internet.",
   "author": "https://github.com/rlhk",
   "main": "./dist/index.html",
@@ -16,16 +16,16 @@
     "tasks": "echo 'Please use babashka tasks defined in bb.edn. (https://babashka.org)'"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.10",
-    "shadow-cljs": "2.26.2"
+    "@tailwindcss/typography": "^0.5.16",
+    "shadow-cljs": "3.1.2"
   },
   "dependencies": {
-    "@logseq/libs": "0.0.15",
-    "daisyui": "^4.4.23",
+    "@logseq/libs": "0.0.17",
+    "daisyui": "4.4.23",
     "help": "^3.0.2",
-    "link-preview-js": "^3.0.5",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "tailwindcss": "^3.4.0"
+    "link-preview-js": "^3.0.15",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwindcss": "3.4.0"
   }
 }

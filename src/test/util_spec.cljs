@@ -38,3 +38,11 @@
 
     " Last term is link with space in label: [GitHub: Let’s build from here](https://github.com)" 
     [" Last term is link with space in label: " "[GitHub: Let’s build from here](https://github.com)"]))
+
+(deftest remove-url-trackers
+  (is (= "https://example.com"
+         (u/remove-url-trackers "https://example.com?utm_source=google&utm_medium=cpc")))
+  (is (= "https://example.com"
+         (u/remove-url-trackers "https://example.com?utm_source=google&utm_medium=cpc&utm_campaign=summer")))
+  (is (= "https://www.pinterest.com/pin/13651605113791129/?e_t=38c0d5cbcc4145b2811474ade9e79790"
+         (u/remove-url-trackers "https://www.pinterest.com/pin/13651605113791129/?utm_campaign=category_rp&e_t=38c0d5cbcc4145b2811474ade9e79790&utm_source=31&utm_medium=2012&utm_content=13651605113791129&utm_term=1"))))

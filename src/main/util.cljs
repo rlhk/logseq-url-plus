@@ -48,8 +48,7 @@
 
 (comment
   (str->md-link "[I'm label](I'm link)")
-  (md-link->str {:label "I'm label" :link "Just a link"})
-  )
+  (md-link->str {:label "I'm label" :link "Just a link"}))
 
 (defn content-type
   "Return a map of :mime-type and :charset etc... 
@@ -63,7 +62,7 @@
                    (vector (-> % second (str/split #"=")))))
            keywordize-keys))
 
-(defn json-response? 
+(defn json-response?
   [content-type-str]
   (= "application/json" (:mime-type (content-type content-type-str))))
 
@@ -95,17 +94,33 @@
 
 (defn records? [data]
   (and (sequential? data), (map? (first data))))
- 
-(defn tokenize-str 
+
+(defn tokenize-str
   "Parse a string of words into a vector of tokens by both comma and whitepace."
   [s]
   (-> (str/trim s)
       (str/replace #"," " ")
       (str/split #"\s+")))
 
-(defn exclude-include-ks 
+(defn exclude-include-ks
   "Exclude then include keys from a map."
   [m exclude-keys include-keys]
   (cond-> m
     (seq exclude-keys) (select-keys (remove (set exclude-keys) (keys m)))
     (seq include-keys) (select-keys include-keys)))
+
+(defn remove-url-trackers
+  "Remove URL tracker param names prefixing 'utm_' from a URL string."
+  ([url] (remove-url-trackers url ["utm_"]))
+  ([url prefixes]
+   (let [[base query] (str/split url #"\?" 2)]
+     (if query
+       (let [params (->> (str/split query #"&")
+                         (filter (fn [param]
+                                   (let [param-name (first (str/split param #"="))]
+                                     (not (some #(str/starts-with? param-name %) prefixes)))))
+                         (str/join "&"))]
+         (if (empty? params)
+           base
+           (str base "?" params)))
+       base))))

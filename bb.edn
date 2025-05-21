@@ -8,7 +8,7 @@
   watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
   watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
   -dev       {:depends [watch-cljs watch-tw]}
-  dev        {:doc "Main development task."
+  dev        {:doc "Main development tasks: watch + build while running test cases."
               :depends [prep]
               :task (run '-dev {:parallel true})}
   deps       {:doc "Check dependency updates."

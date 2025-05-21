@@ -6,7 +6,7 @@
    [rum.core :as rum]
    ["@logseq/libs"]
    ["link-preview-js" :as link-preview]
-   [util :as u :refer [devlog decode-html-content ednize http? else-and-last]]
+   [util :as u :refer [devlog decode-html-content ednize http? else-and-last remove-url-trackers]]
    [ls] [config :refer [plugin-state]] [api] [ui]
    [feat.define :as define]))
 
@@ -38,7 +38,8 @@
     (if (http? url)
       (do
         (ls/show-msg (str "Fetching: " url))
-        (p/let [meta-res (when (= type :meta) (.getLinkPreview link-preview url))
+        (p/let [url (remove-url-trackers url)
+                meta-res (when (= type :meta) (.getLinkPreview link-preview url))
                 meta-edn (u/exclude-include-ks
                           (ednize meta-res)
                           (map keyword (tokenize-setting-str "UrlPlusExcludeAttrs"))
