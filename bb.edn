@@ -24,5 +24,3 @@
               :task (do (println "Releasing version:" v "...")
                         (x (format "git tag -a %s -m \"Release version: %s\"" v v)
                            (format "git push origin %s" v)))}}}
-
-

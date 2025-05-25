@@ -34,12 +34,27 @@
           auth
           (cond
             (= type :api/tweet) {:Authorization (str/fmt "Bearer %s" (aget js/logseq.settings "TwitterAccessToken"))}
-            :else nil)]
+            :else nil)
+          handle-redirects
+          (fn [base-url forwarded-url]
+            (let [url-obj (js/URL. base-url)
+                  forwarded-url-obj (js/URL. forwarded-url)
+                  _ (devlog "handle-redirects: " base-url forwarded-url)]
+              (if (or (= (.-hostname forwarded-url-obj) (.-hostname url-obj))
+                      (= (.-hostname forwarded-url-obj) (str "www." (.-hostname url-obj)))
+                      (= (str "www." (.-hostname forwarded-url-obj)) (.-hostname url-obj)))
+                true
+                false)))]
     (if (http? url)
       (do
-        (ls/show-msg (str "Fetching: " url))
+        (ls/show-msg (str "Processing URL: " url))
         (p/let [url (remove-url-trackers url)
-                meta-res (when (= type :meta) (.getLinkPreview link-preview url))
+                _ (devlog "URL after removing trackers: " url)
+                meta-res (when (= type :meta) 
+                           (.getLinkPreview link-preview url #js {:followRedirects "manual"
+                                                                  :handleRedirects handle-redirects}))
+                ;; TODO: FIXME: link-preview-js redirects handling doesn't seem to work as expected
+                _ (devlog "meta-res: " meta-res)
                 meta-edn (u/exclude-include-ks
                           (ednize meta-res)
                           (map keyword (tokenize-setting-str "UrlPlusExcludeAttrs"))

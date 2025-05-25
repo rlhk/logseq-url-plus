@@ -28,6 +28,10 @@ If the last token is a valid URL, metadata or API response is fetched, then the 
   - Opens the inspector UI for token insights and template customization
   ![Inspector UI](inspector-ui.png)
 
+## Known Issues
+- Unable to handle URL redirects yet, such as `https://youtu.be/abc123` to `https://www.youtube.com/watch?v=abc123`. 
+  - Temporary Solution: Take the redirected URL and paste with CTRL+SHIFT+V to the block.
+
 ## Why Another URL Formatter?
 
 - Prefer slash command `/` over autoformat
