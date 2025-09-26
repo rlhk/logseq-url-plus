@@ -29,8 +29,11 @@ If the last token is a valid URL, metadata or API response is fetched, then the 
   ![Inspector UI](inspector-ui.png)
 
 ## Known Issues
-- Unable to handle URL redirects yet, such as `https://youtu.be/abc123` to `https://www.youtube.com/watch?v=abc123`. 
-  - Temporary Solution: Take the redirected URL and paste with CTRL+SHIFT+V to the block.
+
+### YouTube Short URL Handling
+- The plugin currently does not handle YouTube short URLs (e.g., `https://youtu.be/abc123`)
+- These short URLs need to be normalized to the full YouTube URL format (e.g., `https://www.youtube.com/watch?v=abc123`) for proper metadata extraction
+- **TODO**: Implement URL normalization to convert short YouTube URLs to their canonical form before processing
 
 ## Why Another URL Formatter?
 
