@@ -67,7 +67,7 @@ Before anything is fetched or written to your graph, the URL is tidied up:
 - **Short and mobile YouTube links are canonicalized.** `youtu.be/<id>`,
   `/shorts/<id>`, `/live/<id>`, `/embed/<id>` and `m.youtube.com` all resolve to
   `youtube.com/watch?v=<id>`, so metadata can be read from them.
-- **Tracking parameters are stripped** — `utm_*`, `fbclid`, `gclid`, `igshid`,
+- **Tracking parameters are stripped**, `utm_*`, `fbclid`, `gclid`, `igshid`,
   YouTube's `si`, and similar. Parameters you meant to keep, such as a `t=`
   timestamp, and the `#fragment` are preserved.
 - **Fetched titles and descriptions are escaped** so remote text cannot inject
@@ -85,7 +85,7 @@ Open `Plugins` → `URL+` → `Settings`.
 
 ## Compatibility
 
-URL+ targets **Logseq OG** — the file-based (Markdown) version. Logseq split
+URL+ targets **Logseq OG**, the file-based (Markdown) version. Logseq split
 into two products in April 2026, and the database version has a different
 plugin API surface; a port is not yet available.
 
@@ -101,8 +101,8 @@ plugin API surface; a port is not yet available.
 
 ## Changes in 0.2.0
 
-- **Short URLs work again.** Links that redirect across hosts — `youtu.be`,
-  `t.co`, `bit.ly` — previously failed outright. This was the main reason to
+- **Short URLs work again.** Links that redirect across hosts, `youtu.be`,
+  `t.co`, `bit.ly`, previously failed outright. This was the main reason to
   cut this release.
 - **Failures are now reported.** Network errors, non-JSON responses and unknown
   words used to fail silently; they now show a message instead of doing nothing.

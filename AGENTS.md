@@ -2,12 +2,12 @@
 
 URL+ is a **Logseq plugin written in ClojureScript**, built with shadow-cljs,
 UI in Rum, styled with Tailwind + daisyUI, tasks run by Babashka.
-There is no TypeScript and no JS bundler config — `package.json` exists only to
+There is no TypeScript and no JS bundler config. `package.json` exists only to
 declare npm deps and the Logseq plugin manifest.
 
 ## Prerequisites
 
-Run `./script/bootstrap.sh` first on an unknown machine — it is plain `sh` and
+Run `./script/bootstrap.sh` first on an unknown machine. It is plain `sh` and
 needs nothing, whereas `bb doctor` cannot tell you that `bb` itself is missing.
 Thereafter `bb doctor` is the authoritative check.
 
@@ -16,7 +16,7 @@ Thereafter `bb doctor` is the authoritative check.
   `JAVA_HOME`: the `bb` tasks resolve a suitable JDK themselves and will look
   past an older system default. `bb java` shows which one they picked.
 - Node, Yarn, Babashka, clj-kondo. CI pins Node 22 and Java 21.
-- `yarn install` before any build — `node_modules/` is not committed.
+- `yarn install` before any build, `node_modules/` is not committed.
 
 ## Build, Test, and Development Commands
 
@@ -33,24 +33,23 @@ non-interactive, safe to re-run, and report status through exit codes.
 | `bb check-css` | Every daisyUI class used by the UI still exists | 1 if any are gone |
 | `bb test` | Unit + integration suites | 1 on failure |
 | `bb build` | Release bundle into `dist/` (`:advanced`) | 1 on failure |
-| `bb dev` | Watch CLJS + Tailwind, re-running tests on save — **blocks** | 1 if already running |
-| `bb dev-start` | Same watch, **backgrounded**, waits until ready | 0 when ready |
+| `bb dev` | Watch CLJS + Tailwind, re-running tests on save, **blocks** | 1 if already running |
+| `bb dev agent` | Same watch, **detached**, waits until ready | 0 when ready |
 | `bb dev-logs` | Show the background watch log | 0 |
 | `bb repl-status` | Is the `:plugin` CLJS runtime attached? | **0 = ready**, 1 = not |
 | `bb stop` | Stop the shadow-cljs server (idempotent) | 0 |
-| `bb restart` | `stop` then `dev` | — |
+| `bb restart` | `stop` then `dev` |, |
 | `bb sideload` | Create/refresh the dev plugin copy and register it with a running Logseq | 1 if `dist/` is missing |
 | `bb reload` | Reload the side-loaded plugin; prints the slash-command count | 1 if Logseq is unreachable |
 | `bb deps` | Check for Node + Clojure dependency updates | **1 = updates available** |
 | `bb release` | Runs `bb ci`, then tags and pushes | 1 if CI fails |
 
-**Start the watch with `bb dev-start`, not `bb dev`.** `bb dev` is the watch
-itself and never returns, so it will hang your tool call — but it is not a trap
-to be removed: `bb dev-start` works by launching `bb dev` detached, and
-`bb restart` calls it too. `bb dev-start` then waits until both builds report
-ready, prints a status block and exits 0 — typically in under ten seconds. Then
-poll `bb repl-status`. A person at a terminal wants `bb dev`, where blocking is
-the point.
+**Start the watch with `bb dev agent`.** Plain `bb dev` is the same watch in
+the foreground: it never returns, so it will hang your tool call. Adding
+`agent` runs it detached, waits until both builds report ready, prints a status
+block and exits 0, typically in under ten seconds. Then poll `bb repl-status`.
+`bb restart agent` takes the same mode. A person at a terminal wants bare
+`bb dev`, where blocking is the point.
 
 You do not need to set `JAVA_HOME`; see Prerequisites.
 
@@ -59,9 +58,9 @@ You do not need to set `JAVA_HOME`; see Prerequisites.
 The plugin's CLJS runtime lives **inside a Logseq iframe**. It does not exist
 until Logseq is running with the plugin loaded. Keep three states distinct:
 
-1. **server/watch alive** — a shadow-cljs worker exists for the build
-2. **build ready** — that worker compiled successfully
-3. **runtime attached** — a live JS runtime is connected
+1. **server/watch alive**, a shadow-cljs worker exists for the build
+2. **build ready**, that worker compiled successfully
+3. **runtime attached**, a live JS runtime is connected
 
 ```bash
 bb repl-status   # runtimes=0 means do NOT attach or evaluate yet
@@ -73,10 +72,10 @@ cause of "the REPL is behaving strangely" in this repo.
 
 Workflow:
 
-1. `bb dev-start` (it launches `bb dev` detached; calling `bb dev` yourself blocks forever)
+1. `bb dev agent` (bare `bb dev` is the same watch in the foreground and will block forever)
 2. Launch Logseq with `--remote-debugging-port=9223`, then `bb sideload`.
    It registers under a *different* plugin id, so the Marketplace copy can stay
-   installed. See `docs/dev-notes.md` for the launch command — an integrated
+   installed. See `docs/dev-notes.md` for the launch command, an integrated
    terminal breaks it via `ELECTRON_RUN_AS_NODE`.
 3. `bb repl-status` → confirm `:plugin runtimes=1`
 4. Connect Calva to the shadow-cljs nREPL on port **8702** (`:init-ns core`)
@@ -122,7 +121,7 @@ Run `bb lint && bb check-css && bb test` before every commit; keep all green.
 ## Release
 
 - Targets **Logseq OG** (file-based markdown graphs), via `@logseq/libs` 0.0.17.
-  The database version needs `@logseq/libs@next` and a different API surface —
+  The database version needs `@logseq/libs@next` and a different API surface -
   treat it as a separate port, not an upgrade.
 - Bump `version` in `package.json`, then `bb release`.
 
@@ -132,7 +131,7 @@ Run `bb lint && bb check-css && bb test` before every commit; keep all green.
   (`(.showMsg (.-UI js/logseq) msg)`). Do not go back to capturing them with
   `def` at namespace load: that detaches `this` and breaks under Node.
 - Property names survive `:advanced` only because `:infer-externs :auto`
-  preserves them — re-check `dist/index.js` after any `@logseq/libs` or
+  preserves them, re-check `dist/index.js` after any `@logseq/libs` or
   shadow-cljs upgrade.
 - Top-level `logseq.*` methods cannot be aliased at all; call them directly.
 - `util/decode-html-content` uses the DOM when one is available and falls back
@@ -149,13 +148,13 @@ Run `bb lint && bb check-css && bb test` before every commit; keep all green.
 `docs/dev-notes.md` is the long form, in three parts: common setup and
 constraints, an agent section (CDP driving, what needs a human), and a
 human section (Calva, the manual smoke checklist). Its agent section also
-lists the external Clojure agent skills worth borrowing from — none are
+lists the external Clojure agent skills worth borrowing from, none are
 wired in here, and the best reference is Logseq's own `.agents/skills`.
 - Tailwind's `--watch` exits when stdin is not a TTY, silently producing no
   `dist/styles.css`. `bb dev` uses `--watch=always`; do not "simplify" it back.
 - `Browserslist: caniuse-lite is outdated` comes from inside the tailwindcss
   package and cannot be fixed without upgrading Tailwind. Do not run
-  `update-browserslist-db` here — it removes packages and silences nothing.
+  `update-browserslist-db` here, it removes packages and silences nothing.
 - daisyUI renames classes between majors and a dropped class fails silently.
   `bb check-css` guards this; five classes had been dead since Dec 2023 before
   it existed.
