@@ -127,6 +127,11 @@ Run `bb lint && bb check-css && bb test` before every commit; keep all green.
 - `util/decode-html-content` uses the DOM when one is available and falls back
   to a plain entity decode otherwise. Keep the fallback: it is what lets the
   integration tier run.
+- **Do not upgrade shadow-cljs past 3.1.2** while rum is 0.12.11. 3.5.2 breaks
+  `rum/defc` argument passing - components receive the raw `arguments` object -
+  which silently destroys the Inspector UI. No test catches it; nothing renders
+  a component. rum 0.12.11 is the latest and upstream is dormant.
+- Hot reload does not reach the plugin. Run `bb reload` after every change.
 - Tailwind's `--watch` exits when stdin is not a TTY, silently producing no
   `dist/styles.css`. `bb dev` uses `--watch=always`; do not "simplify" it back.
 - `Browserslist: caniuse-lite is outdated` comes from inside the tailwindcss

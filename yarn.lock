@@ -921,10 +921,10 @@ shadow-cljs-jar@1.3.4:
   resolved "https://registry.yarnpkg.com/shadow-cljs-jar/-/shadow-cljs-jar-1.3.4.tgz#0939d91c468b4bc5eab5a958f79e7ef5696fdf62"
   integrity sha512-cZB2pzVXBnhpJ6PQdsjO+j/MksR28mv4QD/hP/2y1fsIa9Z9RutYgh3N34FZ8Ktl4puAXaIGlct+gMCJ5BmwmA==
 
-shadow-cljs@3.5.2:
-  version "3.5.2"
-  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-3.5.2.tgz#d38c28f2efb8290b780ab0988fd4b5aba81f1920"
-  integrity sha512-mAXzMq+M0I4cJa504hEhTg+pEsqDZaWUxB1y6sd6l8+g6AknnUz1zQj07OBXbs68XxPwjXEYT+0CXE6Ygs+NYw==
+shadow-cljs@3.1.2:
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/shadow-cljs/-/shadow-cljs-3.1.2.tgz#657d904b778bf7a74b73f26283c945bdfbade146"
+  integrity sha512-y7ItnG7XJ/rQt4Ms1JydSy7S5GRgweyFudDzxEUs6eUilz49n3wjIsb9CyMfEIC1o4jll/h99fbtmSXF0JARHQ==
   dependencies:
     buffer "^6.0.3"
     process "^0.11.10"

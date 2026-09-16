@@ -128,6 +128,24 @@ caniuse-lite is not a direct dependency, running it removes packages without
 silencing anything. `bb deps` deliberately does not call it. The warning is
 cosmetic and will go away with the Tailwind v4 upgrade.
 
+**shadow-cljs is pinned to 3.1.2 and must not be upgraded while rum is 0.12.11.**
+shadow-cljs 3.5.2 breaks `rum/defc` argument passing: every component that takes
+arguments receives the raw `arguments` object instead. The Inspector renders
+with `[object Arguments]` in the token field, empty attribute tables, no tabs,
+and every `case` on a passed-in keyword falling through to its default branch.
+Nothing fails at compile time and no test catches it, because the unit and
+integration tiers never render a component.
+
+rum 0.12.11 is the latest release and upstream has been dormant since July
+2023, so there is no rum-side fix. Confirmed by bisect: identical source and
+state renders correctly under 3.1.2 and incorrectly under 3.5.2.
+
+**Hot reload does not reach the plugin.** `:after-load entry/reload` is wired
+and the CLJS runtime does attach (`bb repl-status` shows `runtimes=1`), but a
+changed bundle does not update the running plugin - verified by editing a
+visible string and watching it reach `dist/index.js` and not Logseq. Use
+`bb reload` after every change.
+
 **`bb build` and `bb dev` both own `dist/`.** `prep` deletes it, so building
 while the watch is running would swap the directory out from under shadow-cljs
 and Tailwind, and leave whatever Logseq side-loaded from `dist/` a mix of two
