@@ -409,3 +409,53 @@
              "the block text must be untouched")
          (is (= 1 (h/op-count :insert-block)) "the child block is still written")
          (done))))))
+
+;; ------------------------------------------------- URL+ All links in block
+
+(defn- run-all-links! [f]
+  (-> (p/promise (core/handle-all-links!))
+      (p/then (fn [_] (f)))
+      (p/catch (fn [e]
+                 (is false (str "pipeline threw: " (or (.-stack e) e)))
+                 (f)))))
+
+(deftest all-links-converts-every-bare-url
+  (async done
+    (start! "alpha https://a.com middle https://b.com omega" [] a-meta)
+    (run-all-links!
+     (fn []
+       (is (= "alpha [A Title](https://a.com) middle [A Title](https://b.com) omega"
+              (second (h/first-op :update-block))))
+       (is (re-find #"linked 2 of 2" (h/messages)))
+       (done)))))
+
+(deftest all-links-leaves-existing-markdown-links-alone
+  ;; Wrapping an already-linked URL a second time would corrupt the block.
+  (async done
+    (start! "see [My Page](https://a.com) and https://b.com" [] a-meta)
+    (run-all-links!
+     (fn []
+       (is (= "see [My Page](https://a.com) and [A Title](https://b.com)"
+              (second (h/first-op :update-block))))
+       (is (re-find #"linked 1 of 1" (h/messages)))
+       (done)))))
+
+(deftest all-links-reports-when-there-is-nothing-to-do
+  (async done
+    (start! "no links here at all" [] a-meta)
+    (run-all-links!
+     (fn []
+       (is (re-find #"no URLs in this block" (h/messages)))
+       (is (zero? (h/op-count :update-block)))
+       (done)))))
+
+(deftest all-links-keeps-unresolvable-urls-as-they-were
+  ;; A partial result beats an aborted one, and the count has to be honest
+  ;; about it. nil metadata is what fetch-link-preview yields on failure.
+  (async done
+    (start! "alpha https://a.com omega" [] nil)
+    (run-all-links!
+     (fn []
+       (is (zero? (h/op-count :update-block)) "nothing resolved, so nothing written")
+       (is (re-find #"linked 0 of 1" (h/messages)))
+       (done)))))

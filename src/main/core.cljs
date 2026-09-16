@@ -74,6 +74,15 @@
        :caret-token   (:token caret)
        :caret-after   (or (:after caret) "")})))
 
+(defn- clean-remote-text
+  "Make fetched remote text safe to put in a block.
+
+  Titles and descriptions land in the user's graph verbatim, so they are
+  decoded and then escaped before they can inject markdown links or Logseq
+  property and macro syntax."
+  [v]
+  (or (some-> v decode-html-content u/md-inline-escape) ""))
+
 (defn- token-url?
   "True when `tok` is a URL, or a markdown link wrapping one."
   [tok]
@@ -162,7 +171,7 @@
                                     (ednize meta-res)
                                     (map keyword (tokenize-setting-str "UrlPlusExcludeAttrs"))
                                     (map keyword (tokenize-setting-str "UrlPlusIncludeAttrs"))))
-                        clean    (fn [v] (or (some-> v decode-html-content u/md-inline-escape) ""))
+                        clean    clean-remote-text
                         attrs    {:token       last-token
                                   :url         url
                                   :link-or-url (if maybe-label
@@ -254,6 +263,46 @@
   ;; `defonce` so a shadow-cljs hot reload does not reset the guard.
   (atom false))
 
+(defn handle-all-links!
+  "Turn every bare URL in the block into a markdown link, in one pass.
+
+  A separate command rather than a mode on the others: \"all of them\" has no
+  meaning for the commands that write a single child block or a single
+  `title::` property, so it only exists where it is coherent.
+
+  URLs already inside a markdown link are left alone, and any whose metadata
+  cannot be fetched are left exactly as they were - a partial result is more
+  useful than an aborted one, so the count says what happened."
+  []
+  (p/let [{:keys [block-uuid block-content]} (editing-context)]
+    (if-not block-uuid
+      (ls/show-msg "URL+: no block is being edited.")
+      (let [spans (u/url-spans block-content)]
+        (if (empty? spans)
+          (ls/show-msg "URL+: no URLs in this block.")
+          (p/let [_ (ls/show-msg (str/fmt "URL+: fetching $0 URL(s) ..." [(count spans)]))
+                  results
+                  (p/all
+                   (map (fn [[start end url]]
+                          (let [clean-url (-> url u/canonicalize-url remove-url-trackers)]
+                            (p/let [meta (fetch-link-preview clean-url)]
+                              {:start start
+                               :end   end
+                               :url   clean-url
+                               :title (some-> meta ednize :title clean-remote-text)})))
+                        spans))
+                  resolved (remove #(str/blank? (:title %)) results)
+                  ;; Right to left, so replacing one span cannot invalidate the
+                  ;; offsets of the ones before it.
+                  rebuilt  (reduce (fn [acc {:keys [start end url title]}]
+                                     (str (subs acc 0 start)
+                                          (str/fmt "[$0]($1)" [title url])
+                                          (subs acc end)))
+                                   block-content
+                                   (reverse (sort-by :start resolved)))
+                  _ (when (seq resolved) (ls/update-block block-uuid rebuilt))]
+            (ls/show-msg (str/fmt "URL+: linked $0 of $1 URLs." [(count resolved) (count spans)]))))))))
+
 (defn- register-slash-commands! []
   (if @slash-commands-registered?
     ;; `reload` re-enters `main`, and Logseq has no unregister API, so without
@@ -263,9 +312,15 @@
     (do
       (when (cmd-enabled? {:setting-key "UrlPlusInspector"})
         (ls/register-slash-command "URL+ Inspector ..." #(show-inspector-ui)))
-      (doseq [{:keys [desc] :as opts} (filter cmd-enabled? config/slash-commands)]
+      (doseq [{:keys [desc type] :as opts} (filter cmd-enabled? config/slash-commands)]
         (devlog "Registering:" desc)
-        (ls/register-slash-command desc, #(handle-slash-cmd opts)))
+        (ls/register-slash-command
+         desc
+         (if (= type :all-links)
+           ;; Does not fit the `%(but-last)s` template shape: it rewrites many
+           ;; spans in one block rather than substituting one token.
+           #(handle-all-links!)
+           #(handle-slash-cmd opts))))
       (reset! slash-commands-registered? true))))
 
 (defn main []
