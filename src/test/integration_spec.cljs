@@ -158,6 +158,21 @@
          (is (re-find #"exceptional talent" child)))
        (done)))))
 
+(deftest define-command-distinguishes-outage-from-unknown-word
+  (async done
+    ;; dictionaryapi.dev is community-run; it returned HTTP 522 during real
+    ;; testing. Reporting that as "no definition found" blames the word for the
+    ;; service being down.
+    (start! "prodigy"
+            [["dictionaryapi.dev" {:status 522 :content-type "text/html" :body "<html>"}]])
+    (run-cmd!
+     (cmd "URL+ Append Word Definition")
+     (fn []
+       (is (zero? (h/op-count :insert-block)))
+       (is (re-find #"service unavailable" (h/messages)))
+       (is (re-find #"522" (h/messages)))
+       (done)))))
+
 (deftest define-command-reports-unknown-word
   (async done
     (start! "asdfqwerzxcv"

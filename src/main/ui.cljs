@@ -219,7 +219,11 @@
           ;; dictionaryapi.dev is community-run with no SLA, and returns 404 for
           ;; an unknown word. Say so rather than silently writing nothing.
           (when api-err
-            (ls/show-msg (str "URL+: no definition for \"" token "\" (" api-err ")")))
+            (ls/show-msg
+             (if (= 404 (:status api-edn))
+               (str "URL+: no definition found for \"" token "\"")
+               (str "URL+: dictionary service unavailable"
+                    (when-let [st (:status api-edn)] (str " (HTTP " st ")"))))))
           (ls/format-block-and-child
            block-uuid
            (u/safe-fmt (:block-template state) (select-keys state block-attrs))

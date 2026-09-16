@@ -97,10 +97,22 @@
 
                 api-err
                 (ls/show-msg
-                 (if (= type :api/define)
-                   (str "URL+: no definition found for \"" last-token "\"")
-                   (str "URL+: " api-err
-                        (when-let [m (:message api-edn)] (str " - " m)))))
+                 (let [status (:status api-edn)]
+                   (cond
+                     ;; dictionaryapi.dev answers 404 for a word it does not
+                     ;; know. Anything else is the service failing, and saying
+                     ;; "no definition found" would blame the word for it.
+                     (and (= type :api/define) (= 404 status))
+                     (str "URL+: no definition found for \"" last-token "\"")
+
+                     (= type :api/define)
+                     (str "URL+: dictionary service unavailable"
+                          (when status (str " (HTTP " status ")"))
+                          " - dictionaryapi.dev is community-run with no uptime guarantee")
+
+                     :else
+                     (str "URL+: " api-err
+                          (when-let [m (:message api-edn)] (str " - " m))))))
 
                 :else
                 (p/let [meta-edn (when meta-res
