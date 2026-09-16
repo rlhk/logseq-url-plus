@@ -127,6 +127,11 @@ Run `bb lint && bb check-css && bb test` before every commit; keep all green.
 - `util/decode-html-content` uses the DOM when one is available and falls back
   to a plain entity decode otherwise. Keep the fallback: it is what lets the
   integration tier run.
+- Tailwind's `--watch` exits when stdin is not a TTY, silently producing no
+  `dist/styles.css`. `bb dev` uses `--watch=always`; do not "simplify" it back.
+- `Browserslist: caniuse-lite is outdated` comes from inside the tailwindcss
+  package and cannot be fixed without upgrading Tailwind. Do not run
+  `update-browserslist-db` here — it removes packages and silences nothing.
 - daisyUI renames classes between majors and a dropped class fails silently.
   `bb check-css` guards this; five classes had been dead since Dec 2023 before
   it existed.

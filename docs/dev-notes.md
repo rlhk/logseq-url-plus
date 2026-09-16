@@ -106,6 +106,36 @@ In the Logseq App
 - Click "Load unpacked plugin" and open the root folder of this project which contains the `package.json` and `dist` folder. Logseq plugin system requires entry `package.json` even in dev mode
 - To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
 
+#### Gotchas in the dev flow
+
+**Tailwind's `--watch` quits when stdin is not a TTY.** `bb dev` therefore uses
+`--watch=always`. With plain `--watch`, Tailwind treats stdin closing as a
+shutdown signal and exits instantly whenever it is backgrounded, piped, run
+under CI, or driven by a coding agent — producing **no `dist/styles.css` at
+all**, silently and with exit status 0. It works fine in an interactive
+terminal, which is what makes it easy to miss: the plugin then loads completely
+unstyled, and nothing in the log says why.
+
+For the same reason `bb dev-start` waits for `dist/styles.css` to exist, not
+just for the two CLJS builds to report `Build completed`. The stylesheet is
+half the deliverable.
+
+**`Browserslist: caniuse-lite is outdated` cannot be fixed here.** The message
+comes from `node_modules/tailwindcss/peers/index.js`: Tailwind 3.4.0 bundles
+browserslist and caniuse-lite *inside itself*, so the data is frozen in the
+released package. `npx update-browserslist-db` cannot reach it — and because
+caniuse-lite is not a direct dependency, running it removes packages without
+silencing anything. `bb deps` deliberately does not call it. The warning is
+cosmetic and will go away with the Tailwind v4 upgrade.
+
+**Disable the Marketplace copy before loading the unpacked plugin.** Both share
+the plugin id `logseq-url-plus`, so Logseq will not run them side by side.
+Plugin settings live in `~/.logseq/settings/logseq-url-plus.json` and are keyed
+by plugin id, so the unpacked build inherits whatever the Marketplace copy
+saved. Stale keys from removed features (`TwitterAccessToken`,
+`UrlPlusExtractTweet`) linger there harmlessly — they are simply no longer in
+the settings schema.
+
 #### Editor Setup
 
 - [Visual Studio Code - VSCode](https://code.visualstudio.com)

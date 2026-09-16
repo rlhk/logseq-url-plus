@@ -169,7 +169,11 @@
 
   prep       (x "rm -fr dist out", "mkdir dist", "cp -R resources/. dist/")
   watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
-  watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
+  ;; `--watch=always`, not `--watch`: plain --watch treats stdin closing as a
+  ;; shutdown signal, so it exits instantly whenever stdout/stdin is not a TTY -
+  ;; backgrounded, piped, under CI, or driven by an agent. It works in an
+  ;; interactive terminal and silently produces no CSS everywhere else.
+  watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch=always")
   -dev       {:depends [watch-cljs watch-tw]}
   dev        {:doc "Watch and rebuild CLJS + Tailwind, re-running tests on save."
               :task (do
@@ -202,14 +206,19 @@
                                  "sh" "-c" (str "nohup bb dev >> " log " 2>&1 &"))
                      (loop []
                        (let [out (if (fs/exists? log) (slurp log) "")
+                             ;; dist/styles.css matters as much as the JS: without
+                             ;; it the plugin loads completely unstyled.
                              ready? (and (str/includes? out "[:plugin] Build completed")
-                                         (str/includes? out "[:test] Build completed"))
+                                         (str/includes? out "[:test] Build completed")
+                                         (fs/exists? "dist/styles.css"))
                              failed? (or (str/includes? out "UnsupportedClassVersionError")
                                          (str/includes? out "Error while executing task"))]
                          (cond
                            ready?
                            (do (println "ready=yes")
                                (println "  builds   :plugin :test")
+                               (println "  styles   dist/styles.css"
+                                        (str "(" (fs/size "dist/styles.css") " bytes)"))
                                (println "  dist     http://localhost:8080")
                                (println "  nREPL    port 8702")
                                (println "  logs     bb dev-logs")
@@ -246,9 +255,15 @@
 
   ;; ------------------------------------------------------ deps & release
 
-  deps   {:doc "Check for dependency updates and refresh the browser database."
-          :task (x "npx --yes update-browserslist-db@latest"
-                   "npx npm-check-updates"
+  deps   {:doc "Check for dependency updates."
+          ;; Deliberately does NOT run update-browserslist-db. The
+          ;; "caniuse-lite is outdated" warning comes from
+          ;; node_modules/tailwindcss/peers/index.js - Tailwind 3.4.0 bundles
+          ;; browserslist and caniuse-lite inside itself, so the data is frozen
+          ;; in the package and only a Tailwind upgrade can refresh it.
+          ;; update-browserslist-db assumes a direct dependency and, run here,
+          ;; removes packages without silencing anything.
+          :task (x "npx --yes npm-check-updates"
                    "clojure -M:outdated")}
 
   release {:doc "Tag the version in package.json and push, triggering the release workflow."
