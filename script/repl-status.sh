@@ -35,7 +35,7 @@ OUT=$(npx --yes shadow-cljs clj-eval "
                          (str build)
                          (if running? \"running\" \"not-running\")
                          runtimes))))))
-" 2>/dev/null | grep -vE '^nil$|^shadow-cljs - ')
+" 2>/dev/null | grep -vE '^nil$|^shadow-cljs - |^[[:space:]]*$')
 
 echo "$OUT"
 
