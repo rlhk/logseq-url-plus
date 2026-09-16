@@ -26,7 +26,7 @@ shadow-cljs setup could be verified by launching the browser REPL
 
 On MacOS, a browser will be opened to provide the CLJS runtime. Input `(js/alert "Hello World)` in the REPL and a classic alert box will be shown in the browser window.
 
-**JDK 21+ is required.** shadow-cljs 3.1.2 bundles a Closure Compiler built for
+**JDK 21+ is required.** shadow-cljs bundles a Closure Compiler built for
 class-file version 65, so building on JDK 17 fails with:
 
 ```
@@ -42,7 +42,7 @@ Set `JAVA_HOME` before building, for example:
 export JAVA_HOME=/opt/homebrew/opt/openjdk   # JDK 21 or newer
 ```
 
-CI already pins JDK 21 (see `.github/workflows/publish.yml`), so this affects
+Both workflows in `.github/workflows/` already pin JDK 21, so this affects
 local development only. To manage multiple JDKs, see https://github.com/jenv/
 
 #### Development
@@ -57,7 +57,23 @@ The dev task do the following things:
 
 > **NOTE:** Current Test Driven Development (TDD) setup runs on Node.js runtime.
 
-Check `bb.edn` or run `bb tasks` to list all available tasks
+Check `bb.edn` or run `bb tasks` to list all available tasks. The ones used
+most:
+
+| Task | Purpose |
+| --- | --- |
+| `bb dev` | Watch CLJS + Tailwind, re-running tests on save |
+| `bb build` | Release bundle into `dist/` (`:advanced` optimized) |
+| `bb test` | Unit + integration suite |
+| `bb lint` | clj-kondo over `src` — keep at zero warnings |
+| `bb check-css` | Verify every daisyUI class used by the UI still exists |
+| `bb repl-status` | REPL readiness (see below) |
+| `bb deps` | Check for dependency updates |
+| `bb release` | Tag the version in `package.json` and push |
+
+`bb check-css` exists because daisyUI renames classes between majors and a
+dropped class fails silently — the markup still renders, just unstyled. Five
+classes had been dead since Dec 2023 before this check was added.
 
 In the Logseq App
 
@@ -119,7 +135,7 @@ Try evaluate a few forms in the REPL.
 
 `(in-ns 'core)` switch to namespace `core`
 
-`commands` print the defined commands symbol
+`config/slash-commands` print the registered slash commands
 
 ![](./imgs/calva-repl-5.png)
 
@@ -130,7 +146,8 @@ Try evaluate a few forms in the REPL.
 `(js/console.log "Hello Console")`
 ![](./imgs/calva-repl-7.png)
 
-`(show-msg "Hello Logseq")` Run the defined Clojure fn `show-msg` in namespace `core` to display Logseq App message.
+`(ls/show-msg "Hello Logseq")` Run the interop fn `show-msg` - it lives in the
+`ls` namespace, not `core` - to display a Logseq App message.
 
 Now the REPL is ready for action!
 
@@ -165,16 +182,47 @@ Given a REPL Setup in VSCode as specified above, evaluating expressions can be d
   stub recording every Editor/UI call, and a fixture-backed `js/fetch`.
   Assertions are made on the exact block content that would be written.
 
+Neither tier loads the built bundle into Logseq, so neither can catch a release
+that fails on load - the `:advanced` build munges every name, and `ls.cljs`
+reaches Logseq's API by property access that survives only because
+`:infer-externs :auto` preserves it. The manual checklist below is the only
+coverage for that.
+
 A third tier - true end-to-end against a running Logseq - is not implemented.
-Logseq's own suite (`clj-e2e`) uses Wally over Playwright Java driven by
-Babashka, which would fit this repo's tooling, but there is no published way to
-load an *unpacked* plugin under automation. See the plan's Phase 5 for the
-spike that would settle it. Until then, the manual checklist above is the
-end-to-end coverage.
+Logseq's own suite ([`clj-e2e`](https://github.com/logseq/logseq/tree/master/clj-e2e))
+uses Wally over Playwright Java driven by Babashka, which would fit this repo's
+tooling, but there is no published way to load an *unpacked* plugin under
+automation. Settling that needs a timeboxed spike: either confirm plugins load
+in the HTTP-served app, or drive the desktop binary with Playwright's
+`_electron.launch` and side-load via `LSPluginCore.register(...)`.
+
+#### Manual smoke checklist
+
+Run before tagging a release. `bb dev`, load the unpacked plugin, then in a
+scratch block:
+
+1. `https://youtu.be/dQw4w9WgXcQ` + `/URL+ [title](url)` -> resolves to the real
+   video title. This is the regression that 0.2.0 exists to fix.
+2. A `bit.ly` or `t.co` link -> resolves rather than throwing.
+3. `https://jsonplaceholder.typicode.com/posts/1` +
+   `/URL+ API -> JSON Code` -> JSON block. Confirm in DevTools that a metadata
+   command issues **one** request, not two.
+4. An unreachable host -> a visible message, no unhandled rejection in console.
+5. `/URL+ Append Word Definition` on `prodigy` -> formatted definition;
+   on a nonsense word -> a "no definition found" message.
+6. `/URL+ Inspector ...` -> modal opens, all three tabs render, Esc and
+   backdrop-click close it, Confirm writes the block.
+7. Empty block + any command -> graceful message, no throw.
+8. Reload the plugin from Logseq's plugin panel -> each slash command appears
+   **once**.
 
 ### TODOs
 - [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
 - [x] Move logseq/libs from index.html to `ns require` when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061. The issue was fixed as of @logseq/libs version 0.0.11
+  - As of 0.2.0 that import lives in `entry.cljs`, the build's `:init-fn`, and
+    nowhere else. Importing it installs the `logseq` global as a side effect and
+    needs browser globals, so keeping it out of `core` and `ls` is what lets
+    those namespaces load under Node for the integration tier.
 
 ### Library Management
 

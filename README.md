@@ -12,7 +12,7 @@ If the last token is a valid URL, page metadata or an API response is fetched, t
 
 Install **URL+** from the Logseq marketplace: `Plugins` → `Marketplace` → search for *URL+*.
 
-To run from source, see the [technical notes](./doc/dev-notes.md).
+To run from source, see the [technical notes](./docs/dev-notes.md).
 
 ## Slash Commands
 
@@ -86,4 +86,4 @@ plugin API surface; a port is not yet available.
 
 ## Plugin Development in ClojureScript
 
-See [technical notes](./doc/dev-notes.md) and [AGENTS.md](./AGENTS.md).
+See [technical notes](./docs/dev-notes.md) and [AGENTS.md](./AGENTS.md).
