@@ -151,10 +151,10 @@ config/slash-commands          ; the registered commands
 The rich comment block at the end of `ui.cljs` has expressions for remounting
 the panel and inspecting `@plugin-state`. Evaluate with `option + enter`.
 
-Editor setup: [VS Code](https://code.visualstudio.com) +
-[Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva)
-([Paredit](https://calva.io/paredit/)), optionally
-[VSCode Neovim](https://marketplace.visualstudio.com/items?itemName=asvetliakov.vscode-neovim).
+Editor setup: VS Code +
+[Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva),
+whose [Paredit](https://calva.io/paredit/) is what keeps parens balanced through
+structural edits rather than by hand.
 
 ## Constraints and gotchas
 
@@ -324,11 +324,3 @@ must be synced with upstream before any new PR.
 pulls antq in with `-Sdeps`, so it needs no `~/.clojure/deps.edn` alias. Update
 Clojure deps in `shadow-cljs.edn`, Node deps in `package.json` — but read the
 shadow-cljs pin above first.
-
-## Reference repositories
-
-- [logseq/logseq-plugin-samples](https://github.com/logseq/logseq-plugin-samples) — official
-- [pengx17/logseq-plugin-link-preview](https://github.com/pengx17/logseq-plugin-link-preview)
-- [trashhalo/logseq-dictionary](https://github.com/trashhalo/logseq-dictionary) — dormant since 2023
-- [kurtharriger/logseq-things3-plugin](https://github.com/kurtharriger/logseq-things3-plugin) — ClojureScript, not in the marketplace; dormant since 2022
-- [0x7b1/logseq-plugin-automatic-url-title](https://github.com/0x7b1/logseq-plugin-automatic-url-title) — **archived**
