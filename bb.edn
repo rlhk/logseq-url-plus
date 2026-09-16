@@ -161,6 +161,11 @@
   repl-status {:doc "REPL readiness. Exit 0 when the :plugin CLJS runtime is attached, 1 otherwise."
                :task (x-status "script/repl-status.sh")}
 
+  reload {:doc "Reload the side-loaded plugin inside a running Logseq (needs it launched with --remote-debugging-port). Set PLUGIN_ID to override."
+          :task (let [pid (or (System/getenv "PLUGIN_ID") "logseq-url-plus-dev")]
+                  (x (format "node script/logseq-cdp.mjs eval \"(async()=>{ await LSPluginCore.reload(['%s']); await new Promise(r=>setTimeout(r,3000)); const a=window.logseq.api.get_state_from_store('plugin/installed-slash-commands'); const k=Object.keys(a).find(x=>x.toLowerCase().includes('urlplus')); return 'reloaded %s | slash commands: '+(k?Object.keys(a[k]).length:0); })()\""
+                             pid pid)))}
+
   stop   {:doc "Stop a running shadow-cljs server."
           :task (if-let [pid (shadow-pid)]
                   (do (println "Stopping shadow-cljs server (pid" (str pid) ")...")
