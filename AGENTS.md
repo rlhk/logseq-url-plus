@@ -11,7 +11,7 @@ declare npm deps and the Logseq plugin manifest.
   Closure Compiler built for class-file version 65. You do not need to export
   `JAVA_HOME`: the `bb` tasks resolve a suitable JDK themselves and will look
   past an older system default. `bb java` shows which one they picked.
-- Node (CI uses 18 today; 22 is the target), Yarn, Babashka, clj-kondo.
+- Node, Yarn, Babashka, clj-kondo. CI pins Node 22 and Java 21.
 - `yarn install` before any build — `node_modules/` is not committed.
 
 ## Build, Test, and Development Commands
@@ -66,17 +66,19 @@ cause of "the REPL is behaving strangely" in this repo.
 
 Workflow:
 
-1. `bb dev`
-2. In Logseq: enable developer mode → Plugins → Load unpacked plugin → repo root
-   (uninstall the Marketplace copy first, if present)
+1. `bb dev-start` (never `bb dev` — it blocks forever)
+2. Launch Logseq with `--remote-debugging-port=9223`, then `bb sideload`.
+   It registers under a *different* plugin id, so the Marketplace copy can stay
+   installed. See `docs/dev-notes.md` for the launch command — an integrated
+   terminal breaks it via `ELECTRON_RUN_AS_NODE`.
 3. `bb repl-status` → confirm `:plugin runtimes=1`
 4. Connect Calva to the shadow-cljs nREPL on port **8702** (`:init-ns core`)
 5. Rich `(comment ...)` blocks at the end of `ui.cljs` and `ls.cljs` hold
    scratch expressions for reload and state inspection
 
-Hot reload (`:after-load core/reload`) is unreliable under Logseq dev mode —
-see the note in `shadow-cljs.edn`. Reload the plugin from Logseq's plugin panel
-when state gets stuck.
+Hot reload does **not** reach the plugin, despite `:after-load` being wired.
+Run `bb reload` after every change; it reports the slash-command count, and
+anything other than 11 means registration is broken.
 
 ## Coding Style & Conventions
 
@@ -134,6 +136,14 @@ Run `bb lint && bb check-css && bb test` before every commit; keep all green.
   which silently destroys the Inspector UI. No test catches it; nothing renders
   a component. rum 0.12.11 is the latest and upstream is dormant.
 - Hot reload does not reach the plugin. Run `bb reload` after every change.
+
+## Further reading
+
+`docs/dev-notes.md` is the long form, in three parts: common setup and
+constraints, an agent section (CDP driving, what needs a human), and a
+human section (Calva, the manual smoke checklist). Its agent section also
+lists the external Clojure agent skills worth borrowing from — none are
+wired in here, and the best reference is Logseq's own `.agents/skills`.
 - Tailwind's `--watch` exits when stdin is not a TTY, silently producing no
   `dist/styles.css`. `bb dev` uses `--watch=always`; do not "simplify" it back.
 - `Browserslist: caniuse-lite is outdated` comes from inside the tailwindcss
