@@ -56,5 +56,10 @@ jobs:
       - name: Lint
         run: bb lint
 
+      # daisyUI renames classes between majors and a dropped class fails
+      # silently - the markup renders, just unstyled.
+      - name: Check UI classes
+        run: bb check-css
+
       - name: Test
         run: bb test

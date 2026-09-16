@@ -6,6 +6,8 @@
   test       (x "npx shadow-cljs release test")
   lint       {:doc "Lint all ClojureScript sources with clj-kondo."
               :task (x "clj-kondo --lint src")}
+  check-css  {:doc "Verify every daisyUI class used by the UI still exists."
+              :task (x "script/check-css-classes.sh")}
   repl-status
   {:doc "REPL readiness. 0 runtimes = no CLJS runtime attached; run Logseq with the plugin loaded."
    :task (x "script/repl-status.sh")}

@@ -12,7 +12,7 @@
 (defn data-table 
   ([data] (data-table nil data))
   ([caption data]
-   [:table.table.table-compact.w-full
+   [:table.table.table-xs.w-full
     (when caption 
       [:caption.p-1.text-sm.text-left.font-semibold.text-gray-900 caption])
     (cond 
@@ -39,13 +39,14 @@
 
 (rum/defc token-input [t]
   [:.form-control
-   [:label.input-group.input-group-xs
-    [:span.font-semibold "Token"]
-    [:input.input.input-bordered.input-xs 
+   ;; input-group / input-group-xs were removed in daisyUI 4; plain flex
+   ;; utilities give the same row without depending on component semantics.
+   [:label.flex.items-center.gap-2.w-full
+    [:span.text-xs.font-semibold.whitespace-nowrap "Token"]
+    [:input.input.input-bordered.input-xs.w-full
      {:type "text"
       :read-only true
       :placeholder (when (str/empty? t) "No token detected")
-      :style {:width "100%"}
       :default-value t}]]])
 
 (rum/defc block-attrs-view [state]
@@ -151,7 +152,7 @@
 (rum/defc word-view [state]
   (let [token (:token state)]
     [:.overflow-x-auto.max-h-60
-     [:table.table.table-compact.w-full
+     [:table.table.table-xs.w-full
       [:tbody
        [:tr [:td
              (cond 
@@ -163,9 +164,11 @@
   [{:keys [token option api-edn meta-edn api-record-count]} all-semantics]
   (let [{:keys [semantics]} option
         issue-indicator [:.ml-2 "😓"]]
-    [:.tabs
+    ;; daisyUI 4 puts the size and style modifiers on the container and names
+    ;; them tabs-*; tab-sm / tab-lifted are daisyUI 2 names and no longer exist.
+    [:.tabs.tabs-lifted.tabs-sm
      (for [[k desc] all-semantics]
-       [:.tab.tab-sm.tab-lifted.space-x-1
+       [:.tab.space-x-1
         {:key k
          :class (when (= semantics k) "tab-active")
          :on-click #(swap! plugin-state assoc-in [:option :semantics] k)}
