@@ -31,4 +31,8 @@
          :output-to "out/node-test.js"
          :ns-regexp "-spec$"
          :autorun   true
+         ;; util/devlog is gated on goog.DEBUG. Left on, every test run prints
+         ;; the plugin's internal trace - including the deliberate fetch
+         ;; failures - burying the actual test results under ~25 lines of noise.
+         :closure-defines {goog.DEBUG false}
          :devtools  {:repl-pprint true}}}}

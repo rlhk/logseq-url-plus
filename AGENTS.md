@@ -7,24 +7,43 @@ declare npm deps and the Logseq plugin manifest.
 
 ## Prerequisites
 
-- **JDK 21 or newer is required.** shadow-cljs 3.1.2 bundles a Closure Compiler
-  built for class-file version 65. On JDK 17 every build fails with
-  `UnsupportedClassVersionError`. CI already pins JDK 21; set `JAVA_HOME`
-  locally, e.g. `export JAVA_HOME=/opt/homebrew/opt/openjdk`.
+- **A JDK 21 or newer must be installed**, because shadow-cljs bundles a
+  Closure Compiler built for class-file version 65. You do not need to export
+  `JAVA_HOME`: the `bb` tasks resolve a suitable JDK themselves and will look
+  past an older system default. `bb java` shows which one they picked.
 - Node (CI uses 18 today; 22 is the target), Yarn, Babashka, clj-kondo.
 - `yarn install` before any build — `node_modules/` is not committed.
 
 ## Build, Test, and Development Commands
 
-- `bb tasks` lists every task; `bb.edn` is the source of truth, not npm scripts.
-- `bb test` runs the unit suite (`:node-test` target, `:autorun true`).
-- `bb build` produces the release bundle in `dist/` (`:advanced` optimized).
-- `bb dev` watches CLJS + Tailwind in parallel and re-runs tests on save.
-- `bb lint` runs clj-kondo over `src`. **Keep this at zero warnings.**
-- `bb check-css` verifies every daisyUI class used by the UI still exists.
-- `bb repl-status` reports REPL readiness — see below.
-- `bb release` tags the version in `package.json` and pushes, triggering the
-  GitHub release workflow.
+Everything runs through `bb`; `bb tasks` lists them all. The tasks are written
+to be driven by a coding agent as well as by a person, so they are
+non-interactive, safe to re-run, and report status through exit codes.
+
+| Task | Purpose | Exit code |
+| --- | --- | --- |
+| `bb doctor` | Check the toolchain; prints what is missing and how to fix it | 1 if anything missing |
+| `bb java` | Which JDK the tasks resolved | 0 |
+| `bb ci` | Everything CI runs: lint, check-css, test, build | 1 on any failure |
+| `bb lint` | clj-kondo over `src` | 1 on any warning |
+| `bb check-css` | Every daisyUI class used by the UI still exists | 1 if any are gone |
+| `bb test` | Unit + integration suites | 1 on failure |
+| `bb build` | Release bundle into `dist/` (`:advanced`) | 1 on failure |
+| `bb dev` | Watch CLJS + Tailwind, re-running tests on save — **blocks** | 1 if already running |
+| `bb dev-start` | Same watch, **backgrounded**, waits until ready | 0 when ready |
+| `bb dev-logs` | Show the background watch log | 0 |
+| `bb repl-status` | Is the `:plugin` CLJS runtime attached? | **0 = ready**, 1 = not |
+| `bb stop` | Stop the shadow-cljs server (idempotent) | 0 |
+| `bb restart` | `stop` then `dev` | — |
+| `bb deps` | Dependency updates + refresh the browser database | 0 |
+| `bb release` | Runs `bb ci`, then tags and pushes | 1 if CI fails |
+
+**If you are an agent, use `bb dev-start`, not `bb dev`.** `bb dev` is a watch
+process that never returns and will hang your tool call. `bb dev-start` starts
+the same watch detached, waits until both builds report ready, prints a status
+block and exits 0 — typically in under ten seconds. Then poll `bb repl-status`.
+
+You do not need to set `JAVA_HOME`; see Prerequisites.
 
 ## REPL-Driven Development
 

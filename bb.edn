@@ -1,33 +1,258 @@
 {:paths [#_"scripts"]
  :tasks
- {:requires ([cheshire.core :as json])
-  :init (do (defn x [& cmds] (doseq [cmd cmds] (shell cmd)))
-            (def v (-> (slurp "package.json") (json/parse-string true) :version)))
-  test       (x "npx shadow-cljs release test")
+ {:requires ([cheshire.core :as json]
+             [babashka.fs :as fs]
+             [babashka.process :as proc]
+             [clojure.string :as str])
+
+  :init
+  (do
+    ;; ---------------------------------------------------------------- JDK
+
+    (defn- java-major
+      "Major version of the JDK rooted at `home`, or nil if it is not one."
+      [home]
+      (when (and home (fs/executable? (str home "/bin/java")))
+        (let [{:keys [exit out err]} (proc/sh [(str home "/bin/java") "-version"])]
+          (when (zero? exit)
+            (some-> (re-find (re-pattern "version \"(\\d+)") (str err out))
+                    second parse-long)))))
+
+    (def ^:private min-jdk
+      ;; shadow-cljs bundles a Closure Compiler built for class-file version 65.
+      ;; Anything older dies with UnsupportedClassVersionError before compiling
+      ;; a single file.
+      21)
+
+    (def java-candidates
+      "Every JDK >= min-jdk on this machine, as [home major], lowest first.
+
+      Lowest-first deliberately: it lands on the version CI uses rather than the
+      newest installed, and JDK 24+ emits a sun.misc.Unsafe deprecation warning
+      from the Closure Compiler's bundled protobuf on every single build."
+      (->> (concat [(System/getenv "JAVA_HOME")]
+                   (map str (fs/glob "/Library/Java/JavaVirtualMachines" "*/Contents/Home"))
+                   (map str (fs/glob "/opt/homebrew/opt" "openjdk*"))
+                   (map str (fs/glob "/usr/local/opt" "openjdk*"))
+                   (map str (fs/glob (str (System/getenv "HOME") "/.sdkman/candidates/java") "*")))
+           (filter some?)
+           (distinct)
+           (keep (fn [h] (when-let [m (java-major h)] (when (>= m min-jdk) [h m]))))
+           (sort-by second)
+           (vec)))
+
+    (def java-home   (first (first java-candidates)))
+    (def java-major* (second (first java-candidates)))
+
+    (defn- die! [& lines]
+      (binding [*out* *err*] (doseq [l lines] (println l)))
+      (System/exit 1))
+
+    (defn- build-env []
+      (when-not java-home
+        (die! (format "No JDK %s+ found, and shadow-cljs cannot run without one." min-jdk)
+              ""
+              "  brew install openjdk"
+              ""
+              "Checked JAVA_HOME, /Library/Java/JavaVirtualMachines, Homebrew and SDKMAN."))
+      (cond-> {"JAVA_HOME" java-home
+               "PATH" (str java-home "/bin:" (System/getenv "PATH"))}
+        ;; The flag only exists on JDK 24+; passing it to 21 or 17 aborts the
+        ;; JVM outright, so it must stay gated.
+        (>= java-major* 24)
+        (assoc "JDK_JAVA_OPTIONS" "--sun-misc-unsafe-memory-access=allow")))
+
+    (defn x
+      "Run shell commands with a known-good JDK on PATH. Throws on failure."
+      [& cmds]
+      (let [env (build-env)]
+        (doseq [cmd cmds]
+          (shell {:extra-env env} cmd))))
+
+    (defn x-status
+      "Run one command and exit with its status.
+
+      For tasks where a non-zero exit is a legitimate answer rather than a
+      crash - `bb repl-status` reporting \"not ready\", `bb check-css` reporting
+      a missing class - so agents get a clean exit code and humans do not see
+      babashka's \"Error while executing task\" wrapper on top of it."
+      [cmd]
+      (let [status (:exit (shell {:extra-env (build-env) :continue true} cmd))]
+        ;; Only exit on failure. Calling System/exit on success would kill the
+        ;; whole bb process mid-chain, so `bb ci` would stop after check-css
+        ;; and still report success.
+        (when-not (zero? status)
+          (System/exit status))))
+
+    ;; ------------------------------------------------------- shadow-cljs
+
+    (defn- alive? [pid]
+      (and pid (zero? (:exit (proc/sh ["ps" "-p" (str pid)])))))
+
+    (defn shadow-pid
+      "PID of a running shadow-cljs server, or nil. The pid file survives a
+      crash, so the process is checked for liveness too."
+      []
+      (let [f ".shadow-cljs/server.pid"]
+        (when (fs/exists? f)
+          (let [pid (str/trim (slurp f))]
+            (when (alive? pid) pid)))))
+
+    (defn- have? [cmd]
+      (zero? (:exit (proc/sh ["sh" "-c" (str "command -v " cmd)]))))
+
+    (def v (-> (slurp "package.json") (json/parse-string true) :version)))
+
+  ;; ------------------------------------------------------------- tooling
+
+  java   {:doc "Show which JDK the build tasks resolved."
+          :task (if java-home
+                  (do (println "using:" java-home (str "(JDK " java-major* ")"))
+                      (doseq [[h m] (rest java-candidates)]
+                        (println " also:" h (str "(JDK " m ")"))))
+                  (println "No JDK" (str min-jdk "+") "found."))}
+
+  doctor {:doc "Check that the toolchain is complete and report what is missing."
+          :task (let [checks [["babashka" (str/trim (:out (proc/sh ["bb" "--version"])))
+                               "brew install borkdude/brew/babashka"]
+                              ["java" (when java-home (str java-home " (JDK " java-major* ")"))
+                               (str "brew install openjdk   # need " min-jdk "+")]
+                              ["node" (when (have? "node") (str/trim (:out (proc/sh ["node" "-v"]))))
+                               "brew install node"]
+                              ["yarn" (when (have? "yarn") (str/trim (:out (proc/sh ["yarn" "-v"]))))
+                               "brew install yarn"]
+                              ["clj-kondo" (when (have? "clj-kondo") "installed")
+                               "brew install borkdude/brew/clj-kondo   # needed by: bb lint"]
+                              ["node_modules" (when (fs/exists? "node_modules") "installed")
+                               "yarn install"]]
+                      missing (remove (fn [[_ ok _]] ok) checks)]
+                  (doseq [[nm ok _] checks]
+                    (println (if ok "  ok     " "  MISSING") nm (if ok (str "- " ok) "")))
+                  (when (seq missing)
+                    (println)
+                    (println "To fix:")
+                    (doseq [[_ _ fix] missing] (println "  " fix)))
+                  (println)
+                  (if (seq missing)
+                    (do (println (count missing) "thing(s) missing.")
+                        (System/exit 1))
+                    (println "Toolchain complete.")))}
+
+  ;; --------------------------------------------------------------- checks
+
   lint       {:doc "Lint all ClojureScript sources with clj-kondo."
-              :task (x "clj-kondo --lint src")}
-  check-css  {:doc "Verify every daisyUI class used by the UI still exists."
-              :task (x "script/check-css-classes.sh")}
-  repl-status
-  {:doc "REPL readiness. 0 runtimes = no CLJS runtime attached; run Logseq with the plugin loaded."
-   :task (x "script/repl-status.sh")}
+              :task (if (have? "clj-kondo")
+                      (x "clj-kondo --lint src")
+                      (die! "clj-kondo is not installed."
+                            ""
+                            "  brew install borkdude/brew/clj-kondo"
+                            ""
+                            "Run `bb doctor` to check the rest of the toolchain."))}
+  check-css  {:doc "Verify every daisyUI class used by the UI still exists. Exit 1 if any are gone."
+              :task (x-status "script/check-css-classes.sh")}
+  test       {:doc "Run the unit and integration suites."
+              :task (x "npx shadow-cljs release test")}
+  ci         {:doc "Everything CI runs: lint, check-css, test, build."
+              :depends [lint check-css test build]
+              :task (println "\nAll CI checks passed.")}
+
+  ;; ------------------------------------------------------------ dev loop
+
+  repl-status {:doc "REPL readiness. Exit 0 when the :plugin CLJS runtime is attached, 1 otherwise."
+               :task (x-status "script/repl-status.sh")}
+
+  stop   {:doc "Stop a running shadow-cljs server."
+          :task (if-let [pid (shadow-pid)]
+                  (do (println "Stopping shadow-cljs server (pid" (str pid) ")...")
+                      (x "npx shadow-cljs stop"))
+                  (println "No shadow-cljs server is running."))}
+
   prep       (x "rm -fr dist out", "mkdir dist", "cp -R resources/. dist/")
   watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
   watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
   -dev       {:depends [watch-cljs watch-tw]}
-  dev        {:doc "Main development tasks: watch + build while running test cases."
-              :depends [prep]
-              :task (run '-dev {:parallel true})}
-  deps       {:doc "Check dependency updates."
-              :task (x "npx npm-check-updates", "clojure -M:outdated")}
-  portal     {:doc "Open Portal UI. (https://github.com/djblue/portal)" 
-              :task (x "script/bb-repl-with-portal.sh")}
+  dev        {:doc "Watch and rebuild CLJS + Tailwind, re-running tests on save."
+              :task (do
+                      ;; Without this, a second `bb dev` dies deep inside
+                      ;; shadow-cljs with a 45-line "already started" stack trace.
+                      (when-let [pid (shadow-pid)]
+                        (die! (str "A shadow-cljs server is already running (pid " pid ").")
+                              ""
+                              "  bb repl-status   which builds and runtimes are live"
+                              "  bb stop          shut it down"
+                              "  bb restart       shut it down and start fresh"
+                              ""
+                              "If it is healthy there is nothing to do - it is already watching"
+                              ":plugin and :test, serving dist/ on http://localhost:8080,"
+                              "with nREPL on port 8702."))
+                      (run 'prep)
+                      (run '-dev {:parallel true}))}
+
+  dev-start {:doc "Start the dev watch in the BACKGROUND and wait until both builds are ready. For agents and scripts; humans usually want `bb dev`."
+             :task (let [log ".shadow-cljs/dev.log"
+                         deadline (+ (System/currentTimeMillis) 180000)]
+                     (when-let [pid (shadow-pid)]
+                       (die! (str "Already running (pid " pid "). Use `bb restart` to replace it.")))
+                     (fs/create-dirs ".shadow-cljs")
+                     (spit log "")
+                     (println "Starting dev watch in background; log:" log)
+                     ;; Detached, so this task returns instead of blocking an
+                     ;; agent's tool call for the lifetime of the watch.
+                     (proc/shell {:continue true}
+                                 "sh" "-c" (str "nohup bb dev >> " log " 2>&1 &"))
+                     (loop []
+                       (let [out (if (fs/exists? log) (slurp log) "")
+                             ready? (and (str/includes? out "[:plugin] Build completed")
+                                         (str/includes? out "[:test] Build completed"))
+                             failed? (or (str/includes? out "UnsupportedClassVersionError")
+                                         (str/includes? out "Error while executing task"))]
+                         (cond
+                           ready?
+                           (do (println "ready=yes")
+                               (println "  builds   :plugin :test")
+                               (println "  dist     http://localhost:8080")
+                               (println "  nREPL    port 8702")
+                               (println "  logs     bb dev-logs")
+                               (println "Load the unpacked plugin in Logseq, then `bb repl-status`."))
+
+                           failed?
+                           (die! "ready=no - the dev watch failed to start. Last lines:"
+                                 ""
+                                 (str/join "\n" (take-last 15 (str/split-lines out))))
+
+                           (> (System/currentTimeMillis) deadline)
+                           (die! "ready=no - timed out after 180s. See" log)
+
+                           :else
+                           (do (Thread/sleep 2000) (recur))))))}
+
+  dev-logs {:doc "Show the background dev watch log."
+            :task (let [log ".shadow-cljs/dev.log"]
+                    (if (fs/exists? log)
+                      (println (slurp log))
+                      (println "No background dev log. Start one with `bb dev-start`.")))}
+
+  restart {:doc "Stop any running shadow-cljs server, then start the dev watch."
+           :task (do (run 'stop) (run 'dev))}
+
+  ;; -------------------------------------------------------------- build
+
   build-cljs {:doc "Compile ClojureScript."
               :task (x "yarn", "npx shadow-cljs release :plugin")}
   build-tw   {:doc "Compile Tailwind CSS." 
               :task (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css")}
-  build      {:depends [prep build-cljs build-tw]}
-  release    {:doc "Add Git version tag; push and trigger build and release GitHub workflow."
-              :task (do (println "Releasing version:" v "...")
-                        (x (format "git tag -a %s -m \"Release version: %s\"" v v)
-                           (format "git push origin %s" v)))}}}
+  build      {:doc "Produce the release bundle in dist/."
+              :depends [prep build-cljs build-tw]}
+
+  ;; ------------------------------------------------------ deps & release
+
+  deps   {:doc "Check for dependency updates and refresh the browser database."
+          :task (x "npx --yes update-browserslist-db@latest"
+                   "npx npm-check-updates"
+                   "clojure -M:outdated")}
+
+  release {:doc "Tag the version in package.json and push, triggering the release workflow."
+           :depends [ci]
+           :task (do (println "\nReleasing version:" v "...")
+                     (x (format "git tag -a %s -m \"Release version: %s\"" v v)
+                        (format "git push origin %s" v)))}}}

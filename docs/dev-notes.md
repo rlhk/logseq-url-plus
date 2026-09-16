@@ -26,8 +26,8 @@ shadow-cljs setup could be verified by launching the browser REPL
 
 On MacOS, a browser will be opened to provide the CLJS runtime. Input `(js/alert "Hello World)` in the REPL and a classic alert box will be shown in the browser window.
 
-**JDK 21+ is required.** shadow-cljs bundles a Closure Compiler built for
-class-file version 65, so building on JDK 17 fails with:
+**A JDK 21 or newer must be installed.** shadow-cljs bundles a Closure Compiler
+built for class-file version 65, so an older JVM dies before compiling anything:
 
 ```
 UnsupportedClassVersionError: com/google/javascript/jscomp/CompilerOptions
@@ -36,14 +36,25 @@ version 65.0), this version of the Java Runtime only recognizes class file
 versions up to 61.0
 ```
 
-Set `JAVA_HOME` before building, for example:
+You do **not** need to export `JAVA_HOME`. The `bb` tasks locate a suitable JDK
+themselves, checking `JAVA_HOME` first and then the usual install locations
+(`/Library/Java/JavaVirtualMachines`, Homebrew, SDKMAN). A system default of
+JDK 17 is fine — the tasks will look past it.
 
 ```
-export JAVA_HOME=/opt/homebrew/opt/openjdk   # JDK 21 or newer
+bb java     # which JDK the tasks will use, and what else is available
 ```
 
-Both workflows in `.github/workflows/` already pin JDK 21, so this affects
-local development only. To manage multiple JDKs, see https://github.com/jenv/
+If nothing suitable is found, every task prints a warning saying so.
+`brew install openjdk` is enough to fix it.
+
+Of the qualifying JDKs the tasks pick the **lowest**, which keeps local builds
+on the same version CI uses (both workflows pin 21). On JDK 24+ the Closure
+Compiler's bundled protobuf emits a `sun.misc.Unsafe` deprecation warning on
+every build; the tasks suppress it with
+`--sun-misc-unsafe-memory-access=allow`, which is why you may see a one-line
+`NOTE: Picked up JDK_JAVA_OPTIONS`. That flag does not exist before JDK 24, so
+it is applied only when the selected JDK is new enough.
 
 #### Development
 
@@ -62,14 +73,28 @@ most:
 
 | Task | Purpose |
 | --- | --- |
-| `bb dev` | Watch CLJS + Tailwind, re-running tests on save |
-| `bb build` | Release bundle into `dist/` (`:advanced` optimized) |
-| `bb test` | Unit + integration suite |
+| `bb doctor` | Check the toolchain and report what is missing |
+| `bb dev` | Watch CLJS + Tailwind, re-running tests on save (blocks) |
+| `bb dev-start` | The same watch, backgrounded, waits until ready |
+| `bb stop` / `bb restart` | Stop or replace a running watch |
+| `bb repl-status` | Is the `:plugin` CLJS runtime attached? |
+| `bb ci` | Everything CI runs: lint, check-css, test, build |
+| `bb test` | Unit + integration suites |
+| `bb build` | Release bundle into `dist/` |
 | `bb lint` | clj-kondo over `src` — keep at zero warnings |
 | `bb check-css` | Verify every daisyUI class used by the UI still exists |
-| `bb repl-status` | REPL readiness (see below) |
 | `bb deps` | Check for dependency updates |
-| `bb release` | Tag the version in `package.json` and push |
+| `bb release` | Run CI, then tag and push |
+
+The tasks are meant to serve coding agents as well as people: they are
+non-interactive, safe to re-run, and signal state through exit codes rather
+than only prose. `bb repl-status` exits 0 only when the `:plugin` runtime is
+actually attached, and `bb dev-start` exists because `bb dev` is a watch that
+never returns — it would hang an agent's tool call.
+
+Starting a second watch used to fail with a 45-line `ExceptionInfo: already
+started` stack trace from inside shadow-cljs; `bb dev` now checks first and
+tells you what to do instead.
 
 `bb check-css` exists because daisyUI renames classes between majors and a
 dropped class fails silently — the markup still renders, just unstyled. Five
