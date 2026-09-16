@@ -8,6 +8,7 @@
   at all before 0.2.0."
   (:require
    [cljs.test :refer [deftest is testing async]]
+   [clojure.string]
    [promesa.core :as p]
    [harness :as h]
    [config]
@@ -231,3 +232,180 @@
          (is (= "[T](https://example.com/p?keep=1#frag)"
                 (second (h/first-op :update-block)))))
        (done)))))
+
+;; ------------------------------------------------- issue #20: caret targeting
+
+(def ^:private a-meta #js {:title "A Title" :description "About A"})
+
+(deftest caret-targets-the-url-it-is-on
+  ;; The issue #20 regression test. Two URLs, cursor parked at the end of the
+  ;; first: the first must be formatted and everything after it left alone.
+  (async done
+    (start! {:block-content "alpha https://a.com middle https://b.com omega"
+             :cursor-pos    19}
+            [] a-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (= "alpha [A Title](https://a.com) middle https://b.com omega"
+              (second (h/first-op :update-block))))
+       (done)))))
+
+(deftest caret-inside-a-url-snaps-to-the-whole-url
+  (async done
+    (start! {:block-content "alpha https://a.com middle https://b.com omega"
+             :cursor-pos    12}
+            [] a-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (= "alpha [A Title](https://a.com) middle https://b.com omega"
+              (second (h/first-op :update-block))))
+       (done)))))
+
+(deftest caret-at-end-is-unchanged
+  ;; Same content and expectation as the :meta test above, but with the cursor
+  ;; stated explicitly - the guarantee existing users rely on.
+  (async done
+    (start! {:block-content "see https://youtu.be/dQw4w9WgXcQ"
+             :cursor-pos    32}
+            [] page-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (= "see [Never Gonna Give You Up](https://www.youtube.com/watch?v=dQw4w9WgXcQ)"
+              (second (h/first-op :update-block))))
+       (done)))))
+
+(deftest cursor-unavailable-falls-back-to-last-token
+  ;; Three ways the caret can be unusable. None may regress today's behaviour.
+  (async done
+    (let [expected "see [Never Gonna Give You Up](https://www.youtube.com/watch?v=dQw4w9WgXcQ)"]
+      (-> (p/do
+            (p/create
+             (fn [res _]
+               (start! {:block-content "see https://youtu.be/dQw4w9WgXcQ" :cursor-pos nil}
+                       [] page-meta)
+               (run-cmd! (cmd "URL+ [title](url)")
+                         (fn []
+                           (is (= expected (second (h/first-op :update-block)))
+                               "null cursor")
+                           (res true)))))
+            (p/create
+             (fn [res _]
+               (start! {:block-content "see https://youtu.be/dQw4w9WgXcQ" :cursor-pos :missing}
+                       [] page-meta)
+               (run-cmd! (cmd "URL+ [title](url)")
+                         (fn []
+                           (is (= expected (second (h/first-op :update-block)))
+                               "cursor API absent")
+                           (res true)))))
+            (p/create
+             (fn [res _]
+               (start! {:block-content "see https://youtu.be/dQw4w9WgXcQ" :cursor-pos 9999}
+                       [] page-meta)
+               (run-cmd! (cmd "URL+ [title](url)")
+                         (fn []
+                           (is (= expected (second (h/first-op :update-block)))
+                               "cursor out of range")
+                           (res true))))))
+          (p/then (fn [_] (done)))))))
+
+(deftest caret-before-any-token-reports-and-writes-nothing
+  ;; No URL anywhere, so the sole-URL rescue has nothing to offer and the
+  ;; cursor really is the only signal. Contrast with the test below.
+  (async done
+    (start! {:block-content "alpha beta" :cursor-pos 0} [] a-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (re-find #"no URL or word before the cursor" (h/messages)))
+       (is (zero? (h/op-count :update-block)) "nothing may be written")
+       (done)))))
+
+;; ------------------------------------------------------------- sole-URL rescue
+
+(deftest sole-url-rescues-even-a-cursor-at-column-zero
+  ;; With one URL in the block the cursor position cannot make it ambiguous,
+  ;; so the rescue wins over the "nothing before the cursor" message.
+  (async done
+    (start! {:block-content "alpha https://a.com" :cursor-pos 0} [] a-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (= "alpha [A Title](https://a.com)"
+              (second (h/first-op :update-block))))
+       (done)))))
+
+(deftest sole-url-is-used-even-when-the-cursor-is-elsewhere
+  ;; One URL in the block and the cursor on a word: unambiguous, so use it
+  ;; rather than failing with `invalid URL "details"`.
+  (async done
+    (start! {:block-content "see https://a.com for details" :cursor-pos 29} [] a-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (= "see [A Title](https://a.com) for details"
+              (second (h/first-op :update-block))))
+       (done)))))
+
+(deftest rescue-does-not-fire-with-two-urls
+  ;; Ambiguous, so the cursor must decide - here it is on neither URL, and the
+  ;; command fails loudly rather than guessing.
+  (async done
+    (start! {:block-content "https://a.com and https://b.com then words" :cursor-pos 41} [] a-meta)
+    (run-cmd!
+     (cmd "URL+ [title](url)")
+     (fn []
+       (is (zero? (h/op-count :update-block)) "must not guess between two URLs")
+       (done)))))
+
+(deftest append-definition-is-never-hijacked-by-the-rescue
+  ;; The conflict the rescue rule creates: this command wants a word, and a
+  ;; blind rescue would define the URL instead.
+  (async done
+    (start! {:block-content "https://a.com prodigy" :cursor-pos 21}
+            [["dictionaryapi.dev"
+              {:body [{:word "prodigy"
+                       :meanings [{:partOfSpeech "noun"
+                                   :definitions [{:definition "A young genius."}]}]}]}]])
+    (run-cmd!
+     (cmd "URL+ Append Word Definition")
+     (fn []
+       (is (= "https://a.com prodigy #card" (second (h/first-op :update-block)))
+           "the word is the target, not the URL")
+       (done)))))
+
+;; ------------------------------------------------- tail placement in the block
+
+(deftest attrs-template-keeps-trailing-text-off-the-property-lines
+  ;; `key:: value` lines have to own their lines. If the block's tail were
+  ;; appended at the end of the rendered string it would land below them and
+  ;; break the property parse - so it goes at the end of line 1 instead. This
+  ;; test exists to stop that being "simplified" back to a plain append.
+  (async done
+    (start! {:block-content "alpha https://a.com middle" :cursor-pos 19} [] a-meta)
+    (run-cmd!
+     (cmd "URL+ Metadata -> Logseq Attributes")
+     (fn []
+       (let [written (second (h/first-op :update-block))
+             lines   (clojure.string/split-lines written)]
+         (is (= "alpha https://a.com middle" (first lines))
+             "the tail belongs on line 1, beside the URL")
+         (is (every? #(re-find #"^\w+:: " %) (remove clojure.string/blank? (rest lines)))
+             "every line below line 1 is a property"))
+       (done)))))
+
+(deftest child-block-command-preserves-the-whole-block
+  ;; For `%(but-last)s%(token)s` templates the parent text does not change at
+  ;; all, so a mid-block target must round-trip the content byte-for-byte.
+  (async done
+    (let [content "alpha https://a.com middle https://b.com omega"]
+      (start! {:block-content content :cursor-pos 19} [] a-meta)
+      (run-cmd!
+       (cmd "URL+ Metadata -> JSON Code")
+       (fn []
+         (is (= content (second (h/first-op :update-block)))
+             "the block text must be untouched")
+         (is (= 1 (h/op-count :insert-block)) "the child block is still written")
+         (done))))))

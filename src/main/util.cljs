@@ -312,6 +312,38 @@
       (subs url 0 (dec (count url)))
       url)))
 
+(defn sole-url-span
+  "The one URL-bearing token in `s` as `[start end token]`, or nil.
+
+  A markdown link counts as a single URL and its whole `[label](url)` form is
+  the token, so retargeting onto it replaces the link rather than its innards.
+  Returns nil when `s` holds no URL or more than one - the caller may only use
+  this to disambiguate a block where there is nothing to disambiguate."
+  [s]
+  (let [s     (or s "")
+        links (let [re (span-matcher md-link-span-src)]
+                (loop [acc []]
+                  (if-let [m (.exec re s)]
+                    (let [start (.-index m)
+                          txt   (aget m 0)]
+                      (recur (if (re-find #"https?://" txt)
+                               (conj acc [start (+ start (count txt)) txt])
+                               acc)))
+                    acc)))
+        in-link? (fn [i] (boolean (some (fn [[a b]] (and (>= i a) (< i b))) links)))
+        bare  (let [re (span-matcher "https?://\\S+")]
+                (loop [acc []]
+                  (if-let [m (.exec re s)]
+                    (let [start (.-index m)
+                          url   (trim-url-punctuation (aget m 0))]
+                      (recur (if (in-link? start)
+                               acc
+                               (conj acc [start (+ start (count url)) url]))))
+                    acc)))
+        all   (sort-by first (concat links bare))]
+    (when (= 1 (count all))
+      (vec (first all)))))
+
 (defn url-spans
   "Every bare URL in `s` as `[start end url]`, left to right.
 
