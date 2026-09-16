@@ -2,7 +2,6 @@
   "Interops with Logseq plugin API "
   (:require
    [promesa.core :as p]
-   [api]
    [util :as u :refer [devlog]]
    ["@logseq/libs"]))
 
@@ -25,42 +24,81 @@
 ;; (def set-main-ui-inline-style js/logseq.setMainUIInlineStyle)
 ;; (def show-settings-ui js/logseq.showSettingsUI)
 
+(defn- hide-main-ui! []
+  (js/logseq.hideMainUI (clj->js {:restoreEditingCursor true})))
+
 (defn register-js-events []
   (js/document.addEventListener
    "keydown"
-   #(do
-      (when (= (.-keyCode %) 27) (js/logseq.hideMainUI (clj->js {:restoreEditingCursor true})))
-      (.stopPropagation %))
+   (fn [e]
+     ;; `keyCode` is deprecated; `key` is the modern equivalent.
+     (when (= (.-key e) "Escape")
+       (hide-main-ui!)
+       ;; Only swallow the key we actually handled. The previous version
+       ;; called stopPropagation on every keydown.
+       (.stopPropagation e)))
    false)
   (js/document.addEventListener
    "click"
-   #(let [clicked (.-target %)
-          backdrop (.closest clicked ".url-plus-backdrop")]
-      (when (= clicked backdrop)
-        (js/logseq.hideMainUI (clj->js {:restoreEditingCursor true}))))))
+   (fn [e]
+     (let [target (.-target e)]
+       ;; `.closest` is an Element method; a click landing on a text node
+       ;; would otherwise throw.
+       (when (and target (= 1 (.-nodeType target))
+                  (= target (.closest target ".url-plus-backdrop")))
+         (hide-main-ui!))))))
 
 (defn format-block-and-child
+  "Update a block, then optionally append a child block.
+
+  Returns a promise. `updateBlock` is asynchronous; the previous version
+  discarded its promise and fired `insertBlock` immediately, racing the
+  update against the insert."
   [uuid block-content child-block-content]
   (devlog "Formatting block (and child) ...")
-  (when block-content (update-block uuid, block-content))
-  (when child-block-content (insert-block uuid, child-block-content )))
+  (p/let [_ (when block-content (update-block uuid block-content))]
+    (when child-block-content (insert-block uuid child-block-content))))
 
 (defn fetch-api
-  "Return JSON response from an API URL.
-  Accepts optional authentication info.
-  TODO: Error handling and research established libs ..."
+  "Fetch and parse a JSON API response. Accepts optional auth headers.
+
+  Always returns a promise. On failure it resolves to a JS object of the shape
+  {:error <kind> :message ...} rather than rejecting, so callers can branch on
+  the result instead of relying on an unhandled rejection.
+
+  The previous version logged network errors and returned nil from its
+  `p/catch`, then dereferenced that nil for `.headers` - a TypeError that
+  escaped `handle-slash-cmd` with no user-facing message at all."
   [url auth]
-  (if (u/http? url)
+  (if-not (u/http? url)
+    (p/resolved (clj->js {:error "invalid-url" :message (str url)}))
     (do
       (devlog "Fetching API:" url)
-      (p/let [api-res  (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
-                           (p/then   #(-> %))
-                           (p/catch  #(js/console.log %)))
-              json?    (u/json-response? (.get (.-headers api-res) "Content-Type"))]
-        (if json?
-          (.json api-res)
-          (clj->js {:error "invalid-json-response"}))))
-    (clj->js {:error "invalid-url"})))
+      (-> (p/promise (js/fetch url (when auth (clj->js {:headers auth}))))
+          (p/then
+           (fn [res]
+             (let [ct (.get (.-headers res) "Content-Type")]
+               (cond
+                 (not (.-ok res))
+                 (clj->js {:error "http-error"
+                           :status (.-status res)
+                           :message (str (.-status res) " " (.-statusText res))})
+
+                 (not (u/json-response? ct))
+                 (clj->js {:error "invalid-json-response"
+                           :message (str "Content-Type: " ct)})
+
+                 :else (.json res)))))
+          (p/catch
+           (fn [err]
+             (devlog "Fetch failed:" err)
+             (clj->js {:error "network-error"
+                       :message (or (some-> err .-message) (str err))})))))))
+
+(defn api-error
+  "Return the :error string from a fetch-api result, or nil when it succeeded."
+  [api-edn]
+  (when (map? api-edn) (:error api-edn)))
 
 (defn reload-plugin [plugin-id]
   ;; In JS console: LSPluginCore.reload("logseq-url-plus")

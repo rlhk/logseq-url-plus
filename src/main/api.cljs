@@ -11,6 +11,29 @@
   (let [output (re-find #"\[(.*?)\]\((.*?)\)" maybe-link)]
     (if output (rest output), [nil maybe-link])))
 
+(defn- single-line
+  "Collapse newlines so a value cannot break out of the construct holding it."
+  [v]
+  (-> (str v)
+      (str/replace #"\s*\r?\n\s*" " ")
+      str/trim))
+
+(defn- attr-value
+  "Render an attribute value.
+
+  Logseq parses `key:: value` a line at a time, so an embedded newline - common
+  in a fetched description - truncates the attribute and spills the remainder
+  into block content."
+  [v]
+  (single-line v))
+
+(defn- table-cell
+  "Render a markdown table cell: single-line, with pipes escaped so a value
+  cannot terminate the column early."
+  [v]
+  (-> (single-line v)
+      (str/replace #"\|" "\\|")))
+
 (defn edn->logseq-attrs
   "Convert EDN data to Logseq attributes string. Assume input is map."
   [data]
@@ -22,7 +45,7 @@
         ]
     (str
      #_(when warning (str "#+BEGIN_WARNING\n" warning "\n#+END_WARNING\n"))
-     (str/join "\n" (for [[k v] m] (str (name k) ":: " v))))))
+     (str/join "\n" (for [[k v] m] (str (name k) ":: " (attr-value v)))))))
 
 (defn edn->logseq-blocks
   "Convert EDN data to Logseq attribute blocks"
@@ -34,7 +57,7 @@
 (defn md-table-row 
   "Return string representation of a markdown table row."
   [data] 
-  (str "| " (str/join (interpose " | " data)) " |"))
+  (str "| " (str/join (interpose " | " (map table-cell data))) " |"))
 
 (defn md-table-header 
   "Return string representation of a markdown table header with the separator."
