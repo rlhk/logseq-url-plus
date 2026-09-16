@@ -65,7 +65,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           draft: false
-          prerelease: false
+          # A tag with a hyphen (0.2.0-rc1) is a semver prerelease. Marking it
+          # as one keeps it out of GitHub's "latest" release, which is what the
+          # Logseq Marketplace reads, so a release-workflow rehearsal cannot
+          # reach users.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             package.json
             ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip
