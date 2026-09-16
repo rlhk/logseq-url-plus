@@ -161,6 +161,40 @@
   repl-status {:doc "REPL readiness. Exit 0 when the :plugin CLJS runtime is attached, 1 otherwise."
                :task (x-status "script/repl-status.sh")}
 
+  sideload {:doc "Create (or refresh) the dev side-load copy and register it with a running Logseq."
+            :task (let [dir  (or (System/getenv "DEV_PLUGIN_DIR")
+                                 (str (System/getenv "HOME") "/logseq-url-plus-dev"))
+                        pid  "logseq-url-plus-dev"
+                        pkg  (-> (slurp "package.json") (json/parse-string true))
+                        dist (str (fs/absolutize "dist"))]
+                    (when-not (fs/exists? dist)
+                      (die! "dist/ does not exist yet."
+                            ""
+                            "  bb dev-start   build it with the watch"
+                            "  bb build       build a release bundle"))
+                    (fs/create-dirs dir)
+                    ;; A symlink, not a copy: the watch writes into the project's
+                    ;; dist/ on every save, and `bb reload` must pick that up
+                    ;; without a second sync step.
+                    (let [link (str dir "/dist")]
+                      (when (fs/exists? link {:nofollow-links true}) (fs/delete link))
+                      (fs/create-sym-link link dist))
+                    ;; A distinct logseq.id is mandatory: Logseq refuses to
+                    ;; register a plugin whose id already belongs to the
+                    ;; Marketplace copy, and settings are keyed by id too, so
+                    ;; this keeps dev settings out of the installed plugin's.
+                    (spit (str dir "/package.json")
+                          (json/generate-string
+                           (-> pkg
+                               (assoc :name pid)
+                               (assoc-in [:logseq :id] pid)
+                               (assoc-in [:logseq :title] (str (get-in pkg [:logseq :title]) " (dev)"))
+                               (dissoc :devDependencies :dependencies :scripts))
+                           {:pretty true}))
+                    (println "side-load dir:" dir)
+                    (x (format "node script/logseq-cdp.mjs eval \"(async()=>{ const p=LSPluginCore.registeredPlugins; if(p.has('%s')){ await LSPluginCore.reload(['%s']); return 'already registered, reloaded'; } await LSPluginCore.register({url:'%s'}); return 'registered'; })()\""
+                               pid pid dir)))}
+
   reload {:doc "Reload the side-loaded plugin inside a running Logseq (needs it launched with --remote-debugging-port). Set PLUGIN_ID to override."
           :task (let [pid (or (System/getenv "PLUGIN_ID") "logseq-url-plus-dev")]
                   (x (format "node script/logseq-cdp.mjs eval \"(async()=>{ await LSPluginCore.reload(['%s']); await new Promise(r=>setTimeout(r,3000)); const a=window.logseq.api.get_state_from_store('plugin/installed-slash-commands'); const k=Object.keys(a).find(x=>x.toLowerCase().includes('urlplus')); return 'reloaded %s | slash commands: '+(k?Object.keys(a[k]).length:0); })()\""
@@ -287,8 +321,22 @@
           ;; in the package and only a Tailwind upgrade can refresh it.
           ;; update-browserslist-db assumes a direct dependency and, run here,
           ;; removes packages without silencing anything.
-          :task (x "npx --yes npm-check-updates"
-                   "clojure -M:outdated")}
+          ;; antq is pulled in with -Sdeps rather than a :outdated alias in
+          ;; ~/.clojure/deps.edn, so this works on a fresh checkout with no
+          ;; machine-level setup.
+          :task (do
+                  (when-not (have? "clojure")
+                    (die! "The Clojure CLI is not installed, and `bb deps` needs it"
+                          "to check Clojure/Script dependencies."
+                          ""
+                          "  brew install clojure/tools/clojure"))
+                  (x "npx --yes npm-check-updates")
+                  ;; antq exits 1 when it finds updates. That is an answer, not
+                  ;; a crash, so it goes through x-status: the exit code stays
+                  ;; readable (1 = updates available) without babashka stacking
+                  ;; "Error while executing task" on top of a clean report.
+                  (x-status (str "clojure -Sdeps '{:deps {com.github.liquidz/antq "
+                                 "{:mvn/version \"RELEASE\"}}}' -M -m antq.core")))}
 
   release {:doc "Tag the version in package.json and push, triggering the release workflow."
            :depends [ci]

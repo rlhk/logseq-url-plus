@@ -1,261 +1,219 @@
-# Logseq Plugin Development in ClojureScript
+# Developing this plugin
 
-### General Information
+A Logseq plugin in ClojureScript, built with shadow-cljs, Rum and Tailwind +
+daisyUI, driven by [babashka](https://babashka.org) tasks.
+
+Targets **Logseq OG** (file-based graphs) on macOS. Everything below was
+verified against Logseq 0.10.15.
 
 - [Official plugin samples](https://github.com/logseq/logseq-plugin-samples)
-- [@logseq/libs](https://logseq.github.io/plugins/)
+- [`@logseq/libs` API docs](https://logseq.github.io/plugins/)
 
-### Development in ClojureScript
-
-This shadow-cljs project is created by following: https://github.com/thheller/shadow-cljs#quick-start. Notes below:
-
-> **NOTE:** The following assumes macOS development environment.
-
-#### Project Creation
-New project is created from shadow-cljs boilerplate
-
-`npx create-cljs-project logseq-url-plus`
-> **NOTE:** This is a onetime operation. Skip if project is already created.
-
-If the codebase is obtained from a git repository, run `yarn` to install Node.js dependencies
-
-#### shadow-cljs
-shadow-cljs setup could be verified by launching the browser REPL
-
-`npx shadow-cljs browser-repl`
-
-On MacOS, a browser will be opened to provide the CLJS runtime. Input `(js/alert "Hello World)` in the REPL and a classic alert box will be shown in the browser window.
-
-**A JDK 21 or newer must be installed.** shadow-cljs bundles a Closure Compiler
-built for class-file version 65, so an older JVM dies before compiling anything:
+## Prerequisites
 
 ```
-UnsupportedClassVersionError: com/google/javascript/jscomp/CompilerOptions
-has been compiled by a more recent version of the Java Runtime (class file
-version 65.0), this version of the Java Runtime only recognizes class file
-versions up to 61.0
+bb doctor
 ```
 
-You do **not** need to export `JAVA_HOME`. The `bb` tasks locate a suitable JDK
-themselves, checking `JAVA_HOME` first and then the usual install locations
-(`/Library/Java/JavaVirtualMachines`, Homebrew, SDKMAN). A system default of
-JDK 17 is fine — the tasks will look past it.
+Reports every missing tool and the command to install it. It checks babashka,
+a JDK, node, yarn, clj-kondo and `node_modules`.
+
+**shadow-cljs needs JDK 21+** and dies with `UnsupportedClassVersionError` on
+anything older — but you do not need to export `JAVA_HOME`. The tasks find a
+JDK themselves (`JAVA_HOME`, `/Library/Java/JavaVirtualMachines`, Homebrew,
+SDKMAN) and take the *lowest* qualifying one, matching the version CI pins. A
+system default of JDK 17 is fine; they look past it. `bb java` shows the
+choice. On JDK 24+ they add `--sun-misc-unsafe-memory-access=allow` to silence
+a protobuf warning — hence `NOTE: Picked up JDK_JAVA_OPTIONS`.
+
+## Quick start
 
 ```
-bb java     # which JDK the tasks will use, and what else is available
+yarn install          # once, after cloning
+bb dev                # watch CLJS + Tailwind, re-run tests on save (blocks)
+bb sideload           # register dist/ with a running Logseq as a dev plugin
 ```
 
-If nothing suitable is found, every task prints a warning saying so.
-`brew install openjdk` is enough to fix it.
+Then in Logseq: enable developer mode, and confirm **URL+ (dev)** is listed
+under Plugins. After that, every code change is:
 
-Of the qualifying JDKs the tasks pick the **lowest**, which keeps local builds
-on the same version CI uses (both workflows pin 21). On JDK 24+ the Closure
-Compiler's bundled protobuf emits a `sun.misc.Unsafe` deprecation warning on
-every build; the tasks suppress it with
-`--sun-misc-unsafe-memory-access=allow`, which is why you may see a one-line
-`NOTE: Picked up JDK_JAVA_OPTIONS`. That flag does not exist before JDK 24, so
-it is applied only when the selected JDK is new enough.
+```
+# save a file -> the watch rebuilds dist/ (~10s)
+bb reload             # push it into the running Logseq
+```
 
-#### Development
+`bb sideload` needs Logseq launched with a debugging port — see
+[Driving Logseq over CDP](#driving-logseq-over-cdp). Without one, load the
+plugin by hand: Plugins -> Load unpacked plugin -> the project root (the folder
+with `package.json` *and* `dist/`; Logseq requires the entry `package.json`
+even in dev mode). Console: `Option Command + i`.
 
-`bb dev`
+## Tasks
 
-> **NOTE:** Moved to babashka based tasks. Old npm scripts are kept as reference.
-
-The dev task do the following things:
-1. Watch code changes and perform compilation if touched
-2. Watch and run tests upon code or unit test code change
-
-> **NOTE:** Current Test Driven Development (TDD) setup runs on Node.js runtime.
-
-Check `bb.edn` or run `bb tasks` to list all available tasks. The ones used
-most:
+`bb tasks` lists them all. The ones used most:
 
 | Task | Purpose |
 | --- | --- |
 | `bb doctor` | Check the toolchain and report what is missing |
 | `bb dev` | Watch CLJS + Tailwind, re-running tests on save (blocks) |
 | `bb dev-start` | The same watch, backgrounded, waits until ready |
+| `bb dev-logs` | Show the background watch log |
 | `bb stop` / `bb restart` | Stop or replace a running watch |
+| `bb sideload` | Create/refresh the dev plugin copy and register it |
+| `bb reload` | Reload the side-loaded plugin in a running Logseq |
 | `bb repl-status` | Is the `:plugin` CLJS runtime attached? |
-| `bb ci` | Everything CI runs: lint, check-css, test, build |
 | `bb test` | Unit + integration suites |
-| `bb build` | Release bundle into `dist/` |
 | `bb lint` | clj-kondo over `src` — keep at zero warnings |
 | `bb check-css` | Verify every daisyUI class used by the UI still exists |
-| `bb deps` | Check for dependency updates |
+| `bb build` | Release bundle into `dist/` |
+| `bb ci` | Everything CI runs: lint, check-css, test, build |
+| `bb deps` | Check for dependency updates (exit 1 = updates available) |
 | `bb release` | Run CI, then tag and push |
 
-The tasks are meant to serve coding agents as well as people: they are
-non-interactive, safe to re-run, and signal state through exit codes rather
-than only prose. `bb repl-status` exits 0 only when the `:plugin` runtime is
-actually attached, and `bb dev-start` exists because `bb dev` is a watch that
-never returns — it would hang an agent's tool call.
+The tasks serve coding agents as well as people: non-interactive, safe to
+re-run, signalling state through exit codes rather than only prose, and
+refusing known footguns (a second watch, or a build while one is running)
+rather than documenting them. `bb dev-start` exists because `bb dev` never
+returns — it would hang an agent's tool call.
 
-Starting a second watch used to fail with a 45-line `ExceptionInfo: already
-started` stack trace from inside shadow-cljs; `bb dev` now checks first and
-tells you what to do instead.
+While a watch is up: `dist/` is served on <http://localhost:8080>, the
+shadow-cljs dashboard on <http://localhost:9630>, and nREPL on port **8702**.
 
-`bb check-css` exists because daisyUI renames classes between majors and a
-dropped class fails silently — the markup still renders, just unstyled. Five
-classes had been dead since Dec 2023 before this check was added.
+## The dev plugin copy
 
-In the Logseq App
+`bb sideload` builds a second plugin directory — `~/logseq-url-plus-dev` by
+default, override with `DEV_PLUGIN_DIR` — containing:
 
-- Enable developer mode in Logseq
-- Click "Load unpacked plugin" and open the root folder of this project which contains the `package.json` and `dist` folder. Logseq plugin system requires entry `package.json` even in dev mode
-- To open Logseq console for debugging, use Chrome's default hotkey. E.g. `Option Command + i` on MacOS. For more information, see https://www.electronjs.org/docs/latest/tutorial/application-debugging
+- `package.json` derived from this project's, with `logseq.id` changed to
+  `logseq-url-plus-dev`
+- `dist` as a **symlink** to this project's `dist/`, so the watch's output is
+  picked up with no second sync step
 
-#### Gotchas in the dev flow
+The distinct id is load-bearing. Logseq will not run two plugins with the same
+id side by side and rejects a colliding registration, so without it you would
+have to disable the Marketplace copy first. Settings are keyed by id too
+(`~/.logseq/settings/<id>.json`), so it also keeps dev settings out of the
+installed plugin's.
 
-**Tailwind's `--watch` quits when stdin is not a TTY.** `bb dev` therefore uses
-`--watch=always`. With plain `--watch`, Tailwind treats stdin closing as a
-shutdown signal and exits instantly whenever it is backgrounded, piped, run
-under CI, or driven by a coding agent — producing **no `dist/styles.css` at
-all**, silently and with exit status 0. It works fine in an interactive
-terminal, which is what makes it easy to miss: the plugin then loads completely
-unstyled, and nothing in the log says why.
+The task is idempotent: re-run it to refresh `package.json` after a version
+bump; it reloads rather than re-registering if the plugin is already there.
 
-For the same reason `bb dev-start` waits for `dist/styles.css` to exist, not
-just for the two CLJS builds to report `Build completed`. The stylesheet is
-half the deliverable.
+## REPL
 
-**`Browserslist: caniuse-lite is outdated` cannot be fixed here.** The message
-comes from `node_modules/tailwindcss/peers/index.js`: Tailwind 3.4.0 bundles
-browserslist and caniuse-lite *inside itself*, so the data is frozen in the
-released package. `npx update-browserslist-db` cannot reach it — and because
-caniuse-lite is not a direct dependency, running it removes packages without
-silencing anything. `bb deps` deliberately does not call it. The warning is
-cosmetic and will go away with the Tailwind v4 upgrade.
+### Check readiness first
 
-**shadow-cljs is pinned to 3.1.2 and must not be upgraded while rum is 0.12.11.**
-shadow-cljs 3.5.2 breaks `rum/defc` argument passing: every component that takes
-arguments receives the raw `arguments` object instead. The Inspector renders
-with `[object Arguments]` in the token field, empty attribute tables, no tabs,
-and every `case` on a passed-in keyword falling through to its default branch.
-Nothing fails at compile time and no test catches it, because the unit and
-integration tiers never render a component.
+The plugin's CLJS runtime lives **inside a Logseq iframe**, so it does not
+exist until Logseq is running with the plugin loaded. Three states are easy to
+conflate:
 
-rum 0.12.11 is the latest release and upstream has been dormant since July
-2023, so there is no rum-side fix. Confirmed by bisect: identical source and
-state renders correctly under 3.1.2 and incorrectly under 3.5.2.
-
-**Hot reload does not reach the plugin.** `:after-load entry/reload` is wired
-and the CLJS runtime does attach (`bb repl-status` shows `runtimes=1`), but a
-changed bundle does not update the running plugin - verified by editing a
-visible string and watching it reach `dist/index.js` and not Logseq. Use
-`bb reload` after every change.
-
-**`bb build` and `bb dev` both own `dist/`.** `prep` deletes it, so building
-while the watch is running would swap the directory out from under shadow-cljs
-and Tailwind, and leave whatever Logseq side-loaded from `dist/` a mix of two
-builds. `prep` now refuses when a watch is running and points at `bb reload` or
-`bb stop && bb build`; `ALLOW_BUILD_WITH_WATCH=1` overrides it. The watch
-rebuilds `dist/` on every save, so a separate build is only needed to verify
-the release bundle.
-
-**Disable the Marketplace copy before loading the unpacked plugin.** Both share
-the plugin id `logseq-url-plus`, so Logseq will not run them side by side.
-Plugin settings live in `~/.logseq/settings/logseq-url-plus.json` and are keyed
-by plugin id, so the unpacked build inherits whatever the Marketplace copy
-saved. Stale keys from removed features (`TwitterAccessToken`,
-`UrlPlusExtractTweet`) linger there harmlessly — they are simply no longer in
-the settings schema.
-
-#### Editor Setup
-
-- [Visual Studio Code - VSCode](https://code.visualstudio.com)
-- [VSCode Neovim](https://marketplace.visualstudio.com/items?itemName=asvetliakov.vscode-neovim)
-- [Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva)
-  - [Paredit](https://calva.io/paredit/) in [Calva](https://calva.io)
-
-#### REPL readiness — check before attaching
-
-The plugin's CLJS runtime lives **inside a Logseq iframe**, so it does not exist
-until Logseq is running with the plugin loaded. Three states are easy to
-conflate; keep them separate:
-
-1. **server/watch alive** — a shadow-cljs worker exists for the build
+1. **watch alive** — a shadow-cljs worker exists for the build
 2. **build ready** — that worker compiled successfully
 3. **runtime attached** — a live JS runtime is connected
 
 ```
-bb repl-status
-```
-
-```
-shadow-cljs server : running
-:plugin             watch=running     runtimes=1
-:test               watch=running     runtimes=1
+$ bb repl-status
+server=running
+:plugin watch=running runtimes=1
+:test watch=running runtimes=0
+ready=yes
 ```
 
 If `:plugin runtimes=0`, do **not** attach or evaluate yet — you would be
-talking to the JVM Clojure REPL instead of the plugin, and the results will be
-confusing. Start `bb dev` and load the unpacked plugin in Logseq first.
+talking to the JVM Clojure REPL instead of the plugin, and the results are
+baffling. Start the watch and load the plugin in Logseq first.
 
-#### REPL Setup in VSCode with Calva
+(`:test runtimes=0` is normal. The `:node-test` build spawns a runtime per run
+and exits.)
 
-Calva's REPL client can connnect to the REPL server provided by the shadow-cljs dev mode runtime in Logseq App.
-- Make sure Logseq Desktop App developer mode is enabled and `bb dev` is running as mentioned above
-- Uninstall the plugin installed from Marketplace, if applicable
-- In Logseq App
-  - Select: Plugins -> Load unpacked plugin -> "Choose the plugin project folder"
-  - Test the plugin is actually working
+### Calva
 
-Open the plugin project in VSCode. Bring up the command search and proceed with the following options:
+Connect Calva to the shadow-cljs nREPL on port 8702, build `:plugin`.
 
 ![](./imgs/calva-repl-1.png)
-
 ![](./imgs/calva-repl-2.png)
-
 ![](./imgs/calva-repl-3.png)
-
 ![](./imgs/calva-repl-4.png)
 
-Try evaluate a few forms in the REPL. 
+Smoke-test with:
 
-`(in-ns 'core)` switch to namespace `core`
-
-`config/slash-commands` print the registered slash commands
+```clojure
+(in-ns 'core)
+config/slash-commands          ; the registered commands
+(js/alert "Hello")
+(js/console.log "Hello Console")
+(ls/show-msg "Hello Logseq")   ; show-msg lives in ns `ls`, not `core`
+```
 
 ![](./imgs/calva-repl-5.png)
-
-`(js/alert "Hello")`
-
 ![](./imgs/calva-repl-6.png)
-
-`(js/console.log "Hello Console")`
 ![](./imgs/calva-repl-7.png)
 
-`(ls/show-msg "Hello Logseq")` Run the interop fn `show-msg` - it lives in the
-`ls` namespace, not `core` - to display a Logseq App message.
+The rich comment block at the end of `ui.cljs` has expressions for remounting
+the panel and inspecting `@plugin-state`. Evaluate with `option + enter`.
 
-Now the REPL is ready for action!
+Editor setup: [VS Code](https://code.visualstudio.com) +
+[Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva)
+([Paredit](https://calva.io/paredit/)), optionally
+[VSCode Neovim](https://marketplace.visualstudio.com/items?itemName=asvetliakov.vscode-neovim).
 
-#### Manual reload
+## Constraints and gotchas
 
-In case the hot reload does not fully reflect recent code change, or the app state is stuck, the rich comment block at the end of `ui.cljs` contain expressions which might help.
+Each of these cost real debugging time. They are constraints, not preferences.
 
-Given a REPL Setup in VSCode as specified above, evaluating expressions can be done by placing the cursor inside the expression and pressing `option + enter`.
+### shadow-cljs is pinned to 3.1.2 and must not be upgraded while rum is 0.12.11
 
-### Marketplace
+shadow-cljs 3.5.2 breaks `rum/defc` argument passing: every component that takes
+arguments receives the raw `arguments` object instead. The Inspector renders
+with `[object Arguments]` in the token field, empty attribute tables, no tabs,
+and every `case` on a passed-in keyword falling through to its default branch.
 
-#### Version Release
+Nothing fails at compile time and **no test catches it** — neither tier renders
+a component. rum 0.12.11 is the latest release and upstream has been dormant
+since July 2023, so there is no rum-side fix. Confirmed by bisect: identical
+source and state renders correctly under 3.1.2, incorrectly under 3.5.2.
 
-- Update the "version" field in `package.json`
-- `bb release`
-  - The babashka task reads the "version" field in `package.json` and add it as a new git tag. Upon tag pushing to GitHub, GitHub workflow will build a new release to be picked up by Logseq marketplace.
+### Hot reload does not reach the plugin
 
-#### New Marketplace Submission
+`:after-load entry/reload` is wired and the runtime does attach, but a changed
+bundle does not update the running plugin — verified by editing a visible string
+and watching it reach `dist/index.js` and not Logseq. Use `bb reload` after
+every change.
 
-- Read the [Official Marketplace README](https://github.com/logseq/marketplace/blob/master/README.md)
-- Fork `https://github.com/logseq/marketplace`
-- Update files in `https://github.com/rlhk/marketplace/tree/master/packages/logseq-url-plus`
-- Create pull request (PR)
+### `bb build` and `bb dev` both own `dist/`
 
-### Testing
+`prep` deletes `dist/`, which a running watch is actively writing into. Doing
+that mid-watch leaves whatever Logseq side-loaded a mix of two builds. `prep`
+refuses when a watch is running; `ALLOW_BUILD_WITH_WATCH=1` overrides it. The
+watch rebuilds `dist/` on every save, so a separate build is only needed to
+verify the release bundle.
 
-`bb test` runs both tiers of the suite (shadow-cljs `:node-test`, `:autorun true`):
+### Tailwind's `--watch` quits when stdin is not a TTY
+
+So the tasks use `--watch=always`. With plain `--watch`, Tailwind treats stdin
+closing as a shutdown signal and exits instantly whenever backgrounded, piped,
+run under CI, or driven by an agent — producing **no `dist/styles.css` at all**,
+silently, with exit status 0. It works in an interactive terminal, which is what
+makes it easy to miss: the plugin loads completely unstyled and nothing says
+why. Hence `bb dev-start` waits for `dist/styles.css`, not just for both builds
+to report `Build completed`.
+
+### `Browserslist: caniuse-lite is outdated` cannot be fixed here
+
+Tailwind 3.4.0 bundles browserslist and caniuse-lite inside
+`node_modules/tailwindcss/peers/index.js`, so the data is frozen in the released
+package. `npx update-browserslist-db` cannot reach it, and since caniuse-lite is
+not a direct dependency, running it removes packages without silencing anything.
+`bb deps` deliberately does not call it. Cosmetic; goes away with Tailwind v4.
+
+### Stale settings keys
+
+`~/.logseq/settings/logseq-url-plus.json` keeps keys from removed features
+(`TwitterAccessToken`, `UrlPlusExtractTweet`). Harmless — they are simply no
+longer in the settings schema.
+
+## Testing
+
+`bb test` runs both tiers (shadow-cljs `:node-test`, `:autorun true`):
 
 - **Unit** — pure functions in `src/test/*_spec.cljs`.
 - **Integration** — `integration_spec.cljs` drives the real
@@ -264,27 +222,52 @@ Given a REPL Setup in VSCode as specified above, evaluating expressions can be d
   Assertions are made on the exact block content that would be written.
 
 Neither tier loads the built bundle into Logseq, so neither can catch a release
-that fails on load - the `:advanced` build munges every name, and `ls.cljs`
+that fails on load — the `:advanced` build munges every name, and `ls.cljs`
 reaches Logseq's API by property access that survives only because
-`:infer-externs :auto` preserves it. The manual checklist below is the only
-coverage for that.
+`:infer-externs :auto` preserves it. Nor can either catch a rendering bug; see
+the shadow-cljs pin above. **The manual checklist is the only coverage for
+both.**
 
-A third tier - true end-to-end against a running Logseq - is not implemented.
+A third tier — true end-to-end against a running Logseq — is not implemented.
 Logseq's own suite ([`clj-e2e`](https://github.com/logseq/logseq/tree/master/clj-e2e))
-uses Wally over Playwright Java driven by Babashka, which would fit this repo's
-tooling, but there is no published way to load an *unpacked* plugin under
-automation. Settling that needs a timeboxed spike: either confirm plugins load
-in the HTTP-served app, or drive the desktop binary with Playwright's
+uses Wally over Playwright Java driven by babashka, which would fit this repo,
+but there is no published way to load an *unpacked* plugin under automation.
+Settling that needs a timeboxed spike: confirm whether plugins load in the
+HTTP-served app, or drive the desktop binary with Playwright's
 `_electron.launch` and side-load via `LSPluginCore.register(...)`.
 
-#### Driving Logseq over CDP
+### Manual smoke checklist
 
-Logseq is Electron, so its renderer speaks the Chrome DevTools Protocol. Launch
-it with a debugging port and `script/logseq-cdp.mjs` can evaluate JavaScript in
-the app, side-load a plugin, read blocks back and take screenshots — no clicking
-required. This is how the 0.2.0 bundle was verified in a real Logseq 0.10.15.
+Run before tagging a release. Start the watch, `bb sideload`, then in a scratch
+block:
+
+1. `https://youtu.be/dQw4w9WgXcQ` + `/URL+ [title](url)` -> resolves to the real
+   video title. This is the regression 0.2.0 exists to fix.
+2. A `bit.ly` or `t.co` link -> resolves rather than throwing.
+3. `https://jsonplaceholder.typicode.com/posts/1` + `/URL+ API -> JSON Code`
+   -> JSON block. Confirm in DevTools that a metadata command issues **one**
+   request, not two.
+4. An unreachable host -> a visible message, no unhandled rejection in console.
+5. `/URL+ Append Word Definition` on `prodigy` -> formatted definition; on a
+   nonsense word -> "no definition found". (dictionaryapi.dev is an unfunded
+   community service; a 5xx shows as "dictionary service unavailable" and is
+   not a plugin bug.)
+6. `/URL+ Inspector ...` -> modal opens, all three tabs render, Esc and
+   backdrop-click close it, Confirm writes the block.
+7. Empty block + any command -> graceful message, no throw.
+8. `bb reload` -> each slash command appears **once** (11 total).
+
+## Driving Logseq over CDP
+
+Logseq is Electron, so its renderer speaks the Chrome DevTools Protocol.
+Launched with a debugging port, `script/logseq-cdp.mjs` can evaluate JavaScript
+in the app, read blocks back and take screenshots — no clicking required. This
+is what `bb sideload` and `bb reload` use, and how the 0.2.0 bundle was verified
+against a real Logseq.
 
 ```
+# Quit Logseq first, then:
+#
 # Note the env -u: an integrated terminal (VS Code, Cursor) exports
 # ELECTRON_RUN_AS_NODE=1, which makes the Electron binary run as plain Node and
 # reject the Chromium flag with "bad option: --remote-debugging-port".
@@ -292,65 +275,60 @@ env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE \
   /Applications/Logseq.app/Contents/MacOS/Logseq --remote-debugging-port=9223 &
 
 node script/logseq-cdp.mjs targets
-node script/logseq-cdp.mjs eval "LSPluginCore.registeredPlugins.get('logseq-url-plus').options.version"
+node script/logseq-cdp.mjs eval "LSPluginCore.registeredPlugins.get('logseq-url-plus-dev').options.version"
 node script/logseq-cdp.mjs screenshot /tmp/logseq.png
 ```
+
+Override the port with `LOGSEQ_CDP_PORT` (default 9223).
 
 Two cautions learned the hard way:
 
 - **`LSPluginCore.unregister` deletes the plugin folder** for anything installed
-  under `~/.logseq/plugins`. `unload(true)` emits `unlink-plugin` when
-  `isInstalledInDotRoot`. To test a local build alongside a Marketplace install,
-  copy `dist/` plus a `package.json` with a *different* `logseq.id` to a temp
-  directory and register that; the ids would otherwise collide and registration
-  is rejected. `disable` is safe and reversible; `unregister` is not.
+  under `~/.logseq/plugins`: `unload(true)` emits `unlink-plugin` when
+  `isInstalledInDotRoot`. Never call it on a Marketplace install. `disable` is
+  safe and reversible; `unregister` is not. `bb sideload` keeps the dev copy
+  outside `~/.logseq/plugins` for exactly this reason.
 - `register` persists the path into `~/.logseq/preferences.json` under
   `externals`. Snapshot that file before testing and restore it after.
 
 Slash-command handlers are wired by the SDK as events *inside* the plugin
 sandbox (`Editor["on" + hookName]`), so they cannot be fired from the host with
-`caller.call` or `callUserModel`. Triggering a command still needs real
-keyboard input — the checklist below.
+`caller.call` or `callUserModel`. Triggering a command still needs real keyboard
+input — hence the manual checklist.
 
-#### Manual smoke checklist
+## Release
 
-Run before tagging a release. `bb dev`, load the unpacked plugin, then in a
-scratch block:
+- Update `version` in `package.json`.
+- `bb release` — runs CI, then tags that version and pushes. The tag triggers
+  the GitHub workflow that builds the release the Marketplace picks up.
+- Confirm the zip contains `dist/`, `package.json` and `README.md` only.
 
-1. `https://youtu.be/dQw4w9WgXcQ` + `/URL+ [title](url)` -> resolves to the real
-   video title. This is the regression that 0.2.0 exists to fix.
-2. A `bit.ly` or `t.co` link -> resolves rather than throwing.
-3. `https://jsonplaceholder.typicode.com/posts/1` +
-   `/URL+ API -> JSON Code` -> JSON block. Confirm in DevTools that a metadata
-   command issues **one** request, not two.
-4. An unreachable host -> a visible message, no unhandled rejection in console.
-5. `/URL+ Append Word Definition` on `prodigy` -> formatted definition;
-   on a nonsense word -> a "no definition found" message.
-6. `/URL+ Inspector ...` -> modal opens, all three tabs render, Esc and
-   backdrop-click close it, Confirm writes the block.
-7. Empty block + any command -> graceful message, no throw.
-8. Reload the plugin from Logseq's plugin panel -> each slash command appears
-   **once**.
+Note `@logseq/libs` is imported in exactly one place: `entry.cljs`, the build's
+`:init-fn`. Importing it installs the `logseq` global as a side effect and needs
+browser globals, so keeping it out of `core` and `ls` is what lets those
+namespaces load under Node for the integration tier.
 
-### TODOs
-- [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
-- [x] Move logseq/libs from index.html to `ns require` when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061. The issue was fixed as of @logseq/libs version 0.0.11
-  - As of 0.2.0 that import lives in `entry.cljs`, the build's `:init-fn`, and
-    nowhere else. Importing it installs the `logseq` global as a side effect and
-    needs browser globals, so keeping it out of `core` and `ls` is what lets
-    those namespaces load under Node for the integration tier.
+### Marketplace submission
 
-### Library Management
+Already listed, so this is only for reference:
+[Marketplace README](https://github.com/logseq/marketplace/blob/master/README.md)
+-> fork [logseq/marketplace](https://github.com/logseq/marketplace) -> update
+`packages/logseq-url-plus` -> PR. The existing
+[rlhk/marketplace](https://github.com/rlhk/marketplace) fork dates from 2023 and
+must be synced with upstream before any new PR.
 
-- Run `bb deps` to check dependency updates for both Node and Clojure/Script libraries 
-  - The bb task uses [Antq](https://github.com/liquidz/antq) to find outdated Clojure/Script libraries
-  - Follow official setup to modify `$HOME/.clojure/deps.edn`
-- Modify `shadow-cljs.edn` to update dependencies
+## Dependencies
 
-### Reference Repositories
+`bb deps` checks both Node (npm-check-updates) and Clojure/Script
+([antq](https://github.com/liquidz/antq)) and exits 1 when updates exist. It
+pulls antq in with `-Sdeps`, so it needs no `~/.clojure/deps.edn` alias. Update
+Clojure deps in `shadow-cljs.edn`, Node deps in `package.json` — but read the
+shadow-cljs pin above first.
 
-- https://github.com/logseq/logseq-plugin-samples (official sample)
-- https://github.com/pengx17/logseq-plugin-link-preview
-- https://github.com/0x7b1/logseq-plugin-automatic-url-title
-- https://github.com/trashhalo/logseq-dictionary
-- https://github.com/kurtharriger/logseq-things3-plugin (ClojureScript but not in marketplace)
+## Reference repositories
+
+- [logseq/logseq-plugin-samples](https://github.com/logseq/logseq-plugin-samples) — official
+- [pengx17/logseq-plugin-link-preview](https://github.com/pengx17/logseq-plugin-link-preview)
+- [trashhalo/logseq-dictionary](https://github.com/trashhalo/logseq-dictionary) — dormant since 2023
+- [kurtharriger/logseq-things3-plugin](https://github.com/kurtharriger/logseq-things3-plugin) — ClojureScript, not in the marketplace; dormant since 2022
+- [0x7b1/logseq-plugin-automatic-url-title](https://github.com/0x7b1/logseq-plugin-automatic-url-title) — **archived**

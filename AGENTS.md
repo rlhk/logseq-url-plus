@@ -35,7 +35,9 @@ non-interactive, safe to re-run, and report status through exit codes.
 | `bb repl-status` | Is the `:plugin` CLJS runtime attached? | **0 = ready**, 1 = not |
 | `bb stop` | Stop the shadow-cljs server (idempotent) | 0 |
 | `bb restart` | `stop` then `dev` | — |
-| `bb deps` | Dependency updates + refresh the browser database | 0 |
+| `bb sideload` | Create/refresh the dev plugin copy and register it with a running Logseq | 1 if `dist/` is missing |
+| `bb reload` | Reload the side-loaded plugin; prints the slash-command count | 1 if Logseq is unreachable |
+| `bb deps` | Check for Node + Clojure dependency updates | **1 = updates available** |
 | `bb release` | Runs `bb ci`, then tags and pushes | 1 if CI fails |
 
 **If you are an agent, use `bb dev-start`, not `bb dev`.** `bb dev` is a watch
