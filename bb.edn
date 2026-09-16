@@ -98,8 +98,75 @@
           (let [pid (str/trim (slurp f))]
             (when (alive? pid) pid)))))
 
+    (def dev-pid-file ".shadow-cljs/dev.pid")
+
+    (defn- reap-dev-watch!
+      "Stop the detached `bb dev` wrapper, if one is recorded and still alive.
+
+      `npx shadow-cljs stop` ends the shadow server but not the babashka
+      process that launched it, so this is what keeps repeated starts from
+      leaving a trail of orphans."
+      []
+      (when (fs/exists? dev-pid-file)
+        (let [pid (str/trim (slurp dev-pid-file))]
+          (when (alive? pid)
+            (println "Stopping background dev watch (pid" (str pid) ")...")
+            (proc/sh ["kill" pid])))
+        (fs/delete-if-exists dev-pid-file)))
+
     (defn- have? [cmd]
       (zero? (:exit (proc/sh ["sh" "-c" (str "command -v " cmd)]))))
+
+    (defn dev-detached!
+      "Start `bb dev` in the background and block until it is actually usable.
+
+      Spawns the plain `bb dev` task - never `bb dev agent`, which would
+      recurse - and then polls, because \"the watch process exists\" is not the
+      same as \"the build is ready\"."
+      []
+      (let [log ".shadow-cljs/dev.log"
+            deadline (+ (System/currentTimeMillis) 180000)]
+        (when-let [pid (shadow-pid)]
+          (die! (str "Already running (pid " pid "). Use `bb restart agent` to replace it.")))
+        (fs/create-dirs ".shadow-cljs")
+        (spit log "")
+        (println "Starting dev watch in background; log:" log)
+        ;; Detached, so this returns instead of blocking a tool call for the
+        ;; lifetime of the watch. The pid is recorded because `npx shadow-cljs
+        ;; stop` only stops the shadow SERVER - this babashka wrapper survives
+        ;; it, and without reaping, every start leaks a process.
+        (let [out (:out (proc/sh ["sh" "-c" (str "nohup bb dev >> " log " 2>&1 & echo $!")]))]
+          (spit dev-pid-file (str/trim (str out))))
+        (loop []
+          (let [out (if (fs/exists? log) (slurp log) "")
+                ;; dist/styles.css matters as much as the JS: without it the
+                ;; plugin loads completely unstyled.
+                ready? (and (str/includes? out "[:plugin] Build completed")
+                            (str/includes? out "[:test] Build completed")
+                            (fs/exists? "dist/styles.css"))
+                failed? (or (str/includes? out "UnsupportedClassVersionError")
+                            (str/includes? out "Error while executing task"))]
+            (cond
+              ready?
+              (do (println "ready=yes")
+                  (println "  builds   :plugin :test")
+                  (println "  styles   dist/styles.css"
+                           (str "(" (fs/size "dist/styles.css") " bytes)"))
+                  (println "  dist     http://localhost:8080")
+                  (println "  nREPL    port 8702")
+                  (println "  logs     bb dev-logs")
+                  (println "Load the unpacked plugin in Logseq, then `bb repl-status`."))
+
+              failed?
+              (die! "ready=no - the dev watch failed to start. Last lines:"
+                    ""
+                    (str/join "\n" (take-last 15 (str/split-lines out))))
+
+              (> (System/currentTimeMillis) deadline)
+              (die! "ready=no - timed out after 180s. See" log)
+
+              :else
+              (do (Thread/sleep 2000) (recur)))))))
 
     (def v (-> (slurp "package.json") (json/parse-string true) :version)))
 
@@ -170,7 +237,7 @@
                     (when-not (fs/exists? dist)
                       (die! "dist/ does not exist yet."
                             ""
-                            "  bb dev-start   build it with the watch"
+                            "  bb dev agent        build it with the watch"
                             "  bb build       build a release bundle"))
                     (fs/create-dirs dir)
                     ;; A symlink, not a copy: the watch writes into the project's
@@ -200,11 +267,13 @@
                   (x (format "node script/logseq-cdp.mjs eval \"(async()=>{ await LSPluginCore.reload(['%s']); await new Promise(r=>setTimeout(r,3000)); const a=window.logseq.api.get_state_from_store('plugin/installed-slash-commands'); const k=Object.keys(a).find(x=>x.toLowerCase().includes('urlplus')); return 'reloaded %s | slash commands: '+(k?Object.keys(a[k]).length:0); })()\""
                              pid pid)))}
 
-  stop   {:doc "Stop a running shadow-cljs server."
-          :task (if-let [pid (shadow-pid)]
-                  (do (println "Stopping shadow-cljs server (pid" (str pid) ")...")
-                      (x "npx shadow-cljs stop"))
-                  (println "No shadow-cljs server is running."))}
+  stop   {:doc "Stop a running shadow-cljs server and the background dev watch."
+          :task (do
+                  (if-let [pid (shadow-pid)]
+                    (do (println "Stopping shadow-cljs server (pid" (str pid) ")...")
+                        (x "npx shadow-cljs stop"))
+                    (println "No shadow-cljs server is running."))
+                  (reap-dev-watch!))}
 
   prep       {:doc "Wipe dist/ and out/, then seed dist/ from resources/."
               :task (do
@@ -233,8 +302,10 @@
   ;; interactive terminal and silently produces no CSS everywhere else.
   watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch=always")
   -dev       {:depends [watch-cljs watch-tw]}
-  dev        {:doc "Watch and rebuild CLJS + Tailwind, re-running tests on save."
-              :task (do
+  dev        {:doc "Watch and rebuild CLJS + Tailwind, re-running tests on save. Blocks. `bb dev agent` runs the same watch detached and waits until it is ready - use that from a tool call."
+              :task (if (= "agent" (first *command-line-args*))
+                      (dev-detached!)
+                      (do
                       ;; Without this, a second `bb dev` dies deep inside
                       ;; shadow-cljs with a 45-line "already started" stack trace.
                       (when-let [pid (shadow-pid)]
@@ -247,59 +318,16 @@
                               "If it is healthy there is nothing to do - it is already watching"
                               ":plugin and :test, serving dist/ on http://localhost:8080,"
                               "with nREPL on port 8702."))
-                      (run 'prep)
-                      (run '-dev {:parallel true}))}
-
-  dev-start {:doc "Start the dev watch in the BACKGROUND and wait until both builds are ready. For agents and scripts; humans usually want `bb dev`."
-             :task (let [log ".shadow-cljs/dev.log"
-                         deadline (+ (System/currentTimeMillis) 180000)]
-                     (when-let [pid (shadow-pid)]
-                       (die! (str "Already running (pid " pid "). Use `bb restart` to replace it.")))
-                     (fs/create-dirs ".shadow-cljs")
-                     (spit log "")
-                     (println "Starting dev watch in background; log:" log)
-                     ;; Detached, so this task returns instead of blocking an
-                     ;; agent's tool call for the lifetime of the watch.
-                     (proc/shell {:continue true}
-                                 "sh" "-c" (str "nohup bb dev >> " log " 2>&1 &"))
-                     (loop []
-                       (let [out (if (fs/exists? log) (slurp log) "")
-                             ;; dist/styles.css matters as much as the JS: without
-                             ;; it the plugin loads completely unstyled.
-                             ready? (and (str/includes? out "[:plugin] Build completed")
-                                         (str/includes? out "[:test] Build completed")
-                                         (fs/exists? "dist/styles.css"))
-                             failed? (or (str/includes? out "UnsupportedClassVersionError")
-                                         (str/includes? out "Error while executing task"))]
-                         (cond
-                           ready?
-                           (do (println "ready=yes")
-                               (println "  builds   :plugin :test")
-                               (println "  styles   dist/styles.css"
-                                        (str "(" (fs/size "dist/styles.css") " bytes)"))
-                               (println "  dist     http://localhost:8080")
-                               (println "  nREPL    port 8702")
-                               (println "  logs     bb dev-logs")
-                               (println "Load the unpacked plugin in Logseq, then `bb repl-status`."))
-
-                           failed?
-                           (die! "ready=no - the dev watch failed to start. Last lines:"
-                                 ""
-                                 (str/join "\n" (take-last 15 (str/split-lines out))))
-
-                           (> (System/currentTimeMillis) deadline)
-                           (die! "ready=no - timed out after 180s. See" log)
-
-                           :else
-                           (do (Thread/sleep 2000) (recur))))))}
+                        (run 'prep)
+                        (run '-dev {:parallel true})))}
 
   dev-logs {:doc "Show the background dev watch log."
             :task (let [log ".shadow-cljs/dev.log"]
                     (if (fs/exists? log)
                       (println (slurp log))
-                      (println "No background dev log. Start one with `bb dev-start`.")))}
+                      (println "No background dev log. Start one with `bb dev agent`.")))}
 
-  restart {:doc "Stop any running shadow-cljs server, then start the dev watch."
+  restart {:doc "Stop any running shadow-cljs server, then start the dev watch. Takes the same `agent` mode as `bb dev`."
            :task (do (run 'stop) (run 'dev))}
 
   ;; -------------------------------------------------------------- build

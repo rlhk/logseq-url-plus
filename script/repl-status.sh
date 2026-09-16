@@ -47,7 +47,7 @@ fi
 
 echo "ready=no"
 if echo "$OUT" | grep -q 'server=not-running'; then
-  echo "hint: run 'bb dev' (or 'bb dev-start'), then load the unpacked plugin in Logseq."
+  echo "hint: run 'bb dev' (or 'bb dev agent'), then load the unpacked plugin in Logseq."
 else
   echo "hint: load the unpacked plugin in Logseq; the CLJS runtime lives in its iframe."
 fi
