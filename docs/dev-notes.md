@@ -74,7 +74,7 @@ env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE \
 Then start the watch and register the plugin:
 
 ```
-bb dev            # blocks; agents want `bb dev-start` instead
+bb dev            # the watch; blocks. From a tool call use `bb dev-start`
 bb sideload       # register dist/ with the running Logseq
 ```
 
@@ -254,12 +254,21 @@ per task, coding conventions, and the interop rules in `ls.cljs` that
 `:advanced` compilation depends on. Read it first; this section only covers
 what is specific to driving the app.
 
-### Use `bb dev-start`, never `bb dev`
+### Start the watch with `bb dev-start`
 
-`bb dev` is a watch that never returns and will hang the tool call.
-`bb dev-start` runs the same watch detached, waits until both builds report
-ready *and* `dist/styles.css` exists, prints a status block and exits 0 —
-usually in under ten seconds. `bb dev-logs` shows its output.
+`bb dev` is the watch itself: it runs `prep`, then compiles CLJS and Tailwind
+in parallel, and never returns. That is correct for a person at a terminal —
+live output, Ctrl-C to stop — and useless to an agent, because the tool call
+hangs for the lifetime of the watch.
+
+`bb dev-start` is a wrapper around it, not a replacement: it launches `bb dev`
+detached, then polls until both builds report ready *and* `dist/styles.css`
+exists, prints a status block and exits 0 — usually in under ten seconds.
+`bb dev-logs` shows the output you would have seen inline.
+
+So the rule is about who is calling, not about one task being unsafe. Use
+`bb dev-start` from a tool call; `bb dev` is what it runs, and what `bb restart`
+runs too.
 
 ### Check REPL readiness before evaluating
 

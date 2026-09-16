@@ -44,10 +44,13 @@ non-interactive, safe to re-run, and report status through exit codes.
 | `bb deps` | Check for Node + Clojure dependency updates | **1 = updates available** |
 | `bb release` | Runs `bb ci`, then tags and pushes | 1 if CI fails |
 
-**If you are an agent, use `bb dev-start`, not `bb dev`.** `bb dev` is a watch
-process that never returns and will hang your tool call. `bb dev-start` starts
-the same watch detached, waits until both builds report ready, prints a status
-block and exits 0 — typically in under ten seconds. Then poll `bb repl-status`.
+**Start the watch with `bb dev-start`, not `bb dev`.** `bb dev` is the watch
+itself and never returns, so it will hang your tool call — but it is not a trap
+to be removed: `bb dev-start` works by launching `bb dev` detached, and
+`bb restart` calls it too. `bb dev-start` then waits until both builds report
+ready, prints a status block and exits 0 — typically in under ten seconds. Then
+poll `bb repl-status`. A person at a terminal wants `bb dev`, where blocking is
+the point.
 
 You do not need to set `JAVA_HOME`; see Prerequisites.
 
@@ -70,7 +73,7 @@ cause of "the REPL is behaving strangely" in this repo.
 
 Workflow:
 
-1. `bb dev-start` (never `bb dev` — it blocks forever)
+1. `bb dev-start` (it launches `bb dev` detached; calling `bb dev` yourself blocks forever)
 2. Launch Logseq with `--remote-debugging-port=9223`, then `bb sideload`.
    It registers under a *different* plugin id, so the Marketplace copy can stay
    installed. See `docs/dev-notes.md` for the launch command — an integrated
