@@ -155,6 +155,23 @@ Given a REPL Setup in VSCode as specified above, evaluating expressions can be d
 - Update files in `https://github.com/rlhk/marketplace/tree/master/packages/logseq-url-plus`
 - Create pull request (PR)
 
+### Testing
+
+`bb test` runs both tiers of the suite (shadow-cljs `:node-test`, `:autorun true`):
+
+- **Unit** — pure functions in `src/test/*_spec.cljs`.
+- **Integration** — `integration_spec.cljs` drives the real
+  `core/handle-slash-cmd` against the fakes in `harness.cljs`: a `js/logseq`
+  stub recording every Editor/UI call, and a fixture-backed `js/fetch`.
+  Assertions are made on the exact block content that would be written.
+
+A third tier - true end-to-end against a running Logseq - is not implemented.
+Logseq's own suite (`clj-e2e`) uses Wally over Playwright Java driven by
+Babashka, which would fit this repo's tooling, but there is no published way to
+load an *unpacked* plugin under automation. See the plan's Phase 5 for the
+spike that would settle it. Until then, the manual checklist above is the
+end-to-end coverage.
+
 ### TODOs
 - [x] Use shadow-cljs advanced compilation in release for release bundle size optimization
 - [x] Move logseq/libs from index.html to `ns require` when clojure compiler issue is resolved: https://github.com/thheller/shadow-cljs/issues/1061. The issue was fixed as of @logseq/libs version 0.0.11

@@ -21,6 +21,7 @@ declare npm deps and the Logseq plugin manifest.
 - `bb build` produces the release bundle in `dist/` (`:advanced` optimized).
 - `bb dev` watches CLJS + Tailwind in parallel and re-runs tests on save.
 - `bb lint` runs clj-kondo over `src`. **Keep this at zero warnings.**
+- `bb check-css` verifies every daisyUI class used by the UI still exists.
 - `bb repl-status` reports REPL readiness — see below.
 - `bb release` tags the version in `package.json` and pushes, triggering the
   GitHub release workflow.
@@ -63,15 +64,30 @@ when state gets stuck.
   structural tool; do not count brackets manually.
 - Every namespace gets a docstring naming its single responsibility.
 - Keep pure logic in `util.cljs` / `api.cljs` / `feat/` where it is unit-testable;
-  `core.cljs` orchestrates, `ls.cljs` is the only Logseq interop layer.
+  `core.cljs` orchestrates, `ls.cljs` is the only Logseq interop layer, and
+  `entry.cljs` is the only namespace that imports `@logseq/libs`.
 - `feat/define.cljs` is the model to follow: small, pure, well covered.
 
 ## Testing
 
-- Unit specs live in `src/test/`, matched by `:ns-regexp "-spec$"`.
-- Prefer testing pure functions directly. Network, Logseq interop and error
-  handling belong in the integration harness (fake `js/logseq` + fixture `fetch`).
-- Run `bb lint && bb test` before every commit; keep both green.
+Two tiers, both run by `bb test`:
+
+1. **Unit specs** in `src/test/*_spec.cljs` for pure functions.
+2. **Integration** (`integration_spec.cljs` + `harness.cljs`) runs the real
+   `core/handle-slash-cmd` against a fake `js/logseq` and a fixture-backed
+   `js/fetch`, asserting on the exact block content that would reach the graph.
+
+This works only because `core` and `ls` no longer import `@logseq/libs` - that
+import lives in `entry.cljs`, the build's `:init-fn`. Keep it that way: pulling
+`@logseq/libs` back into `core` or `ls` breaks the whole integration tier,
+because it needs browser globals at import time and cannot load under Node.
+
+link-preview-js fetches through its own transport, so metadata is injected by
+swapping `core/fetch-link-preview` (see `harness/link-preview-fixture`).
+`with-redefs` does not work here - it restores synchronously, long before the
+async pipeline reaches the call.
+
+Run `bb lint && bb check-css && bb test` before every commit; keep all green.
 
 ## Release
 
@@ -82,9 +98,18 @@ when state gets stuck.
 
 ## Gotchas
 
-- `ls.cljs` detaches Logseq API methods with `def`. This survives `:advanced`
-  only because `:infer-externs :auto` preserves the property names — verify
-  after any `@logseq/libs` or shadow-cljs upgrade.
-- Top-level `logseq.*` methods cannot be aliased this way; call them directly.
+- `ls.cljs` reaches Logseq API methods through their owning object at call time
+  (`(.showMsg (.-UI js/logseq) msg)`). Do not go back to capturing them with
+  `def` at namespace load: that detaches `this` and breaks under Node.
+- Property names survive `:advanced` only because `:infer-externs :auto`
+  preserves them — re-check `dist/index.js` after any `@logseq/libs` or
+  shadow-cljs upgrade.
+- Top-level `logseq.*` methods cannot be aliased at all; call them directly.
+- `util/decode-html-content` uses the DOM when one is available and falls back
+  to a plain entity decode otherwise. Keep the fallback: it is what lets the
+  integration tier run.
+- daisyUI renames classes between majors and a dropped class fails silently.
+  `bb check-css` guards this; five classes had been dead since Dec 2023 before
+  it existed.
 - Tailwind scans `dist/**/*.{html,js}`, i.e. compiled output, so Tailwind must
   run after the CLJS build. `bb build` already orders this correctly.
