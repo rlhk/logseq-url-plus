@@ -177,10 +177,16 @@
                   (swap! plugin-state assoc-in [:option :semantics] :api))))
             (swap! plugin-state assoc-in [:option :semantics] :word)))))))
 
-(defn cmd-enabled? [m]
-  ;; `logseq.settings` is null until the schema has hydrated; `aget` on null
-  ;; throws, and this runs during `main`.
-  (boolean (some-> js/logseq.settings (aget (:setting-key m)))))
+(defn cmd-enabled?
+  "True unless the user has explicitly turned this command off.
+
+  An absent value means enabled, because every command defaults to true in the
+  settings schema. This matters on a plugin's very first load, when
+  `logseq.settings` has not hydrated yet: treating absent as disabled meant a
+  fresh install registered no slash commands at all until Logseq was restarted
+  or the plugin reloaded. Verified against a real Logseq 0.10.15."
+  [m]
+  (not (false? (some-> js/logseq.settings (aget (:setting-key m))))))
 
 (defonce ^:private slash-commands-registered?
   ;; `defonce` so a shadow-cljs hot reload does not reset the guard.

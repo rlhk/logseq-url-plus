@@ -251,6 +251,41 @@ automation. Settling that needs a timeboxed spike: either confirm plugins load
 in the HTTP-served app, or drive the desktop binary with Playwright's
 `_electron.launch` and side-load via `LSPluginCore.register(...)`.
 
+#### Driving Logseq over CDP
+
+Logseq is Electron, so its renderer speaks the Chrome DevTools Protocol. Launch
+it with a debugging port and `script/logseq-cdp.mjs` can evaluate JavaScript in
+the app, side-load a plugin, read blocks back and take screenshots — no clicking
+required. This is how the 0.2.0 bundle was verified in a real Logseq 0.10.15.
+
+```
+# Note the env -u: an integrated terminal (VS Code, Cursor) exports
+# ELECTRON_RUN_AS_NODE=1, which makes the Electron binary run as plain Node and
+# reject the Chromium flag with "bad option: --remote-debugging-port".
+env -u ELECTRON_RUN_AS_NODE -u ELECTRON_NO_ATTACH_CONSOLE \
+  /Applications/Logseq.app/Contents/MacOS/Logseq --remote-debugging-port=9223 &
+
+node script/logseq-cdp.mjs targets
+node script/logseq-cdp.mjs eval "LSPluginCore.registeredPlugins.get('logseq-url-plus').options.version"
+node script/logseq-cdp.mjs screenshot /tmp/logseq.png
+```
+
+Two cautions learned the hard way:
+
+- **`LSPluginCore.unregister` deletes the plugin folder** for anything installed
+  under `~/.logseq/plugins`. `unload(true)` emits `unlink-plugin` when
+  `isInstalledInDotRoot`. To test a local build alongside a Marketplace install,
+  copy `dist/` plus a `package.json` with a *different* `logseq.id` to a temp
+  directory and register that; the ids would otherwise collide and registration
+  is rejected. `disable` is safe and reversible; `unregister` is not.
+- `register` persists the path into `~/.logseq/preferences.json` under
+  `externals`. Snapshot that file before testing and restore it after.
+
+Slash-command handlers are wired by the SDK as events *inside* the plugin
+sandbox (`Editor["on" + hookName]`), so they cannot be fired from the host with
+`caller.call` or `callUserModel`. Triggering a command still needs real
+keyboard input — the checklist below.
+
 #### Manual smoke checklist
 
 Run before tagging a release. `bb dev`, load the unpacked plugin, then in a
