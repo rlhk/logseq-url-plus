@@ -172,7 +172,26 @@
                       (x "npx shadow-cljs stop"))
                   (println "No shadow-cljs server is running."))}
 
-  prep       (x "rm -fr dist out", "mkdir dist", "cp -R resources/. dist/")
+  prep       {:doc "Wipe dist/ and out/, then seed dist/ from resources/."
+              :task (do
+                      ;; prep deletes dist/, which a running watch is actively
+                      ;; writing into. Doing that mid-watch leaves shadow-cljs
+                      ;; and Tailwind writing to a directory that was swapped
+                      ;; underneath them, and whatever Logseq has side-loaded
+                      ;; from dist/ becomes a mix of both builds.
+                      (when-let [pid (shadow-pid)]
+                        (when-not (System/getenv "ALLOW_BUILD_WITH_WATCH")
+                          (die! (str "A shadow-cljs watch is running (pid " pid ") and this would")
+                                "delete dist/ out from under it."
+                                ""
+                                "  bb reload            reload the plugin with what the watch already built"
+                                "  bb stop && bb build  stop the watch, then build a clean release bundle"
+                                ""
+                                "The watch rebuilds dist/ on every save, so a separate build is only"
+                                "needed to verify the release bundle."
+                                ""
+                                "Set ALLOW_BUILD_WITH_WATCH=1 to override.")))
+                      (x "rm -fr dist out" "mkdir dist" "cp -R resources/. dist/"))}
   watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
   ;; `--watch=always`, not `--watch`: plain --watch treats stdin closing as a
   ;; shutdown signal, so it exits instantly whenever stdout/stdin is not a TTY -

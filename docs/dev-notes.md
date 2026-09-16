@@ -128,6 +128,14 @@ caniuse-lite is not a direct dependency, running it removes packages without
 silencing anything. `bb deps` deliberately does not call it. The warning is
 cosmetic and will go away with the Tailwind v4 upgrade.
 
+**`bb build` and `bb dev` both own `dist/`.** `prep` deletes it, so building
+while the watch is running would swap the directory out from under shadow-cljs
+and Tailwind, and leave whatever Logseq side-loaded from `dist/` a mix of two
+builds. `prep` now refuses when a watch is running and points at `bb reload` or
+`bb stop && bb build`; `ALLOW_BUILD_WITH_WATCH=1` overrides it. The watch
+rebuilds `dist/` on every save, so a separate build is only needed to verify
+the release bundle.
+
 **Disable the Marketplace copy before loading the unpacked plugin.** Both share
 the plugin id `logseq-url-plus`, so Logseq will not run them side by side.
 Plugin settings live in `~/.logseq/settings/logseq-url-plus.json` and are keyed
