@@ -20,7 +20,6 @@
            :module-loader true
            :output-dir "dist"
            :modules  {:index {:init-fn core/init}}
-           :build-hooks [(portal.shadow.remote/hook)]
            :devtools {:preloads [devtools.preload
                                  portal.setup]
                       :after-load core/reload

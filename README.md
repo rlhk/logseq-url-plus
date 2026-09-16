@@ -6,7 +6,7 @@ The plugin takes the last token of an editing block, be it a word or URL, and au
 
 If the last token is a valid URL, metadata or API response is fetched, then the block is modified by applying a selected template. The plugin also fetches compact dictionary definition of a word term, or attach a few useful links to it.
 
-![demo](demo.gif)
+![demo](https://raw.githubusercontent.com/rlhk/logseq-url-plus/main/demo.gif)
 
 ## Slash Commands
 
@@ -26,7 +26,7 @@ Each command can be enabled or disabled individually in the plugin settings.
     service with no uptime guarantee
 - `URL+ Inspector ...`
   - Opens the inspector UI for token insights and template customization
-  ![Inspector UI](inspector-ui.png)
+  ![Inspector UI](https://raw.githubusercontent.com/rlhk/logseq-url-plus/main/inspector-ui.png)
 
 ## Compatibility
 

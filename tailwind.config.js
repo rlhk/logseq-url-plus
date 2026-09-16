@@ -1,5 +1,3 @@
-const { transparent } = require('daisyui/src/theming');
-
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./dist/**/*.{html,js}"],
