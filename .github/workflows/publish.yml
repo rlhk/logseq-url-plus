@@ -47,9 +47,10 @@ jobs:
       - name: Build Code
         run: |
           yarn install --frozen-lockfile
-          bb lint
-          bb test
-          bb build
+          # `bb ci` rather than lint/test/build spelled out: it also runs
+          # check-css, which this workflow was skipping, so a dead daisyUI
+          # class could ship in a release that CI on the PR had rejected.
+          bb ci
           mkdir ${{ env.PLUGIN_NAME }}
           # Documentation images are referenced from raw.githubusercontent.com,
           # so they no longer need to ship inside the plugin zip.
