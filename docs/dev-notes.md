@@ -344,15 +344,87 @@ you reach for one.
   shadow-cljs builds and runtimes included. The lower-friction option if paren
   damage becomes a real problem, since the REPL workflow here is already Calva.
 
-### What you cannot verify, and must hand off
+### Slash-command caret semantics
+
+Measured in Logseq 0.10.15 with a temporary probe in `editing-context`, driven
+by synthetic keystrokes over CDP. **A slash-command handler can trust the
+caret**, which is what makes cursor-aware token selection possible:
+
+- `getEditingBlockContent` at handler time has the typed `/URL+ …` text
+  **already removed**.
+- `getEditingCursorPosition().pos` indexes **that cleaned string**, not the
+  pre-removal one.
+- Both are **stable** - re-reading inside `setTimeout(…, 0)` returns identical
+  values, so nothing settles on a later tick.
+
+Verified at five caret positions: after a mid-block URL, inside a URL, column
+0, end of block, and on line 2 of a multi-line block.
+
+The reason it works is visible in the registry. `@logseq/libs` rewrites a
+callback slash command into an ordered action list, which you can read back
+from a running app:
+
+```
+node script/logseq-cdp.mjs eval "(()=>{const a=logseq.api.get_state_from_store('plugin/installed-slash-commands');const c=a['logseqUrlPlusDev'];return JSON.stringify(c[Object.keys(c)[0]]);})()"
+
+[["clearCurrentSlash", false, {...}], ["restoreSavedCursor", {...}], ["hook", ...]]
+```
+
+Logseq clears the typed text and restores the cursor **before** calling the
+plugin. Anything that reorders those steps invalidates the feature.
+
+**Two behaviours to know when testing by hand or by script:**
+
+- **Logseq only opens the command menu when `/` follows a space** (or the start
+  of the block). Typing `/` straight after a URL inserts a literal slash and no
+  menu appears. Mid-block invocation therefore always costs one typed space.
+- **That space survives** `clearCurrentSlash`, which removes only the command
+  text. So a mid-block invocation leaves the block one space wider than it
+  started, and anything reconstructing the block has to account for it.
+
+### Driving keystrokes over CDP
+
+`script/logseq-cdp.mjs type <text>` and `key <Name>` dispatch through the CDP
+Input domain, which is what made the above measurable without a human at the
+keyboard. Three things that cost time getting there:
+
+- **`keyDown` must not carry `text`.** Both `keyDown`-with-text and `char`
+  insert, so sending both types every character twice.
+- **`code` and `windowsVirtualKeyCode` are required.** Logseq opens the command
+  menu from a keydown handler that inspects the key code; a bare `char` event
+  inserts the `/` and the menu never appears.
+- **The window must be focused.** A backgrounded Logseq reports
+  `document.visibilityState === "hidden"` and refuses to enter editing mode, so
+  `editBlock` silently does nothing. Fix with
+  `osascript -e 'tell application "Logseq" to activate'` first.
+
+Place the caret exactly with `logseq.api.edit_block(uuid, {pos: n})` rather
+than clicking coordinates.
+
+### What you can and cannot verify
 
 Slash-command handlers are wired by the SDK as events *inside* the plugin
 sandbox (`Editor["on" + hookName]`), so they cannot be fired from the host with
-`caller.call` or `callUserModel`. **Triggering a command needs real keyboard
-input.** Screenshots via CDP will confirm what rendered, but firing the command
-in the first place is a human step — hand off to the
-[manual checklist](#manual-smoke-checklist) rather than reporting a command as
-verified.
+`caller.call` or `callUserModel`. They **can** be driven with synthetic input -
+see [Driving keystrokes over CDP](#driving-keystrokes-over-cdp) - which is
+enough to exercise a command end to end and read the result back:
+
+```
+osascript -e 'tell application "Logseq" to activate'
+node script/logseq-cdp.mjs eval "logseq.api.edit_block('<uuid>',{pos:29})"
+node script/logseq-cdp.mjs type " /URL+ [title](url)"    # note the leading space
+node script/logseq-cdp.mjs key Enter
+```
+
+What that still does **not** cover: whether a command chosen with the **mouse**
+behaves like one chosen with Enter, and anything about how the UI actually
+looks. Take a screenshot and read it; do not infer appearance from state. The
+Inspector was once completely broken while every test passed, because no test
+renders a component.
+
+Hand the [manual checklist](#manual-smoke-checklist) to a human before a
+release regardless. Automation proves a path works; it does not prove the
+feature is usable.
 
 ---
 
