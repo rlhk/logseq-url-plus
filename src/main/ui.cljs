@@ -205,13 +205,19 @@
       :word
       (p/let [{:keys [token option]} state
               {:keys [append-child-block? child-block-format]} option
-              url      (str "https://api.dictionaryapi.dev/api/v2/entries/en/" token)
-              api-json (-> (ls/fetch-api url nil)
-                           (p/then   #(-> %))
-                           (p/catch  #(js/console.log %)))
-              definition (-> api-json u/ednize define/fmt-definition)]
+              url      (str config/dictionary-api-base token)
+              ;; fetch-api resolves to {:error ...} rather than rejecting, so
+              ;; the old p/then-identity / p/catch-log wrapper was dead code.
+              api-json (ls/fetch-api url nil)
+              api-edn  (u/ednize api-json)
+              api-err  (ls/api-error api-edn)
+              definition (when-not api-err (define/fmt-definition api-edn))]
         (devlog "Handle semantics: :word")
         (devlog "definition:" definition)
+        ;; dictionaryapi.dev is community-run with no SLA, and returns 404 for
+        ;; an unknown word. Say so rather than silently writing nothing.
+        (when api-err
+          (ls/show-msg (str "URL+: no definition for \"" token "\" (" api-err ")")))
         (ls/format-block-and-child
          block-uuid
          (when-let [block-template (:block-template state)]

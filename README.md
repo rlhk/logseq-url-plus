@@ -10,30 +10,29 @@ If the last token is a valid URL, metadata or API response is fetched, then the 
 
 ## Slash Commands
 
+Each command can be enabled or disabled individually in the plugin settings.
+
 - `URL+ [title](url)`
 - `URL+ [title](url) description`
 - `URL+ Metadata -> Logseq Attributes`
 - `URL+ Metadata -> EDN Code`
 - `URL+ Metadata -> JSON Code`
 - `URL+ API -> Logseq Attributes`
-- `URL+ API -> Logseq Attribute Blocks`
+- `URL+ API -> Logseq Attributes Block`
 - `URL+ API -> EDN Code`
 - `URL+ API -> JSON Code`
-- `URL+ Append Definition`
-- `URL+ Extract tweet text of twitter.com`
-  - Twitter developer access token required
-  - Paste the token in the plugin settings panel
-  - For details on the Twitter developer programme, see https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens
+- `URL+ Append Word Definition`
+  - Uses [dictionaryapi.dev](https://dictionaryapi.dev), a free community-run
+    service with no uptime guarantee
 - `URL+ Inspector ...`
   - Opens the inspector UI for token insights and template customization
   ![Inspector UI](inspector-ui.png)
 
-## Known Issues
+## Compatibility
 
-### YouTube Short URL Handling
-- The plugin currently does not handle YouTube short URLs (e.g., `https://youtu.be/abc123`)
-- These short URLs need to be normalized to the full YouTube URL format (e.g., `https://www.youtube.com/watch?v=abc123`) for proper metadata extraction
-- **TODO**: Implement URL normalization to convert short YouTube URLs to their canonical form before processing
+URL+ targets **Logseq OG** — the file-based (Markdown) version. Logseq split
+into two products in April 2026, and the database version has a different
+plugin API surface; a port is not yet available.
 
 ## Why Another URL Formatter?
 

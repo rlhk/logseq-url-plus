@@ -1,4 +1,12 @@
-(ns config)
+(ns config
+  "Static plugin data: slash commands, settings schema and initial UI state.")
+
+(def dictionary-api-base
+  "Base URL for the free dictionaryapi.dev lookup service.
+
+  Community-run and unfunded, with no SLA - callers must surface failures
+  rather than assume a definition comes back."
+  "https://api.dictionaryapi.dev/api/v2/entries/en/")
 
 (def token-semantics
   {:website "Website" :api "API" :word "Word"})
@@ -67,14 +75,10 @@
     :block "%(but-last)s%(token)s #card"
     :child "%(definition)s"
     :setting-key "UrlPlusAppendDef"}
-   {:desc "URL+ Extract tweet text of twitter.com"
-    :type :api/tweet
-    :block "%(but-last)s%(token)s #tweet"
-    :child "%(tweet-text)s\n%(tweet-author)s (%(tweet-time)s)"
-    :setting-key "UrlPlusExtractTweet"}
-   #_{:desc "URL+ Link Wiktionary URL"
-    :type :link/define
-    :block "%(but-last)s[%(token)s](%(url)s)"}])
+   ;; The Twitter/X tweet-extraction command was removed in 0.2.0: tweet lookup
+   ;; left the free API tier in Feb 2023, so the command could not work for
+   ;; anyone without a paid developer plan.
+   ])
 
 (defn- desc->settings-title [s]
   (str "Register '" s "' in global slash commands"))
@@ -88,12 +92,7 @@
      :default true}))
 
 (def ls-plugin-settings
-  (concat [{:key "TwitterAccessToken"
-            :type "string"
-            :title "Twitter Access Token"
-            :description "See: https://developer.twitter.com/en/docs/authentication/oauth-2-0/bearer-tokens"
-            :default ""}
-           {:key "UrlPlusExcludeAttrs"
+  (concat [{:key "UrlPlusExcludeAttrs"
             :type "string"
             :title "Attributes to EXCLUDE in URL metadata."
             :description "List attributes to exclude, separated by comma or space. Case sensitive."

@@ -10,17 +10,10 @@
    [ls] [config :refer [plugin-state]] [api] [ui]
    [feat.define :as define]))
 
-(def ^:private dictionary-api-base
-  "https://api.dictionaryapi.dev/api/v2/entries/en/")
-
-(def ^:private tweet-api-base
-  (str "https://api.twitter.com/2/tweets/?tweet.fields=created_at"
-       "&expansions=author_id&user.fields=created_at&ids="))
-
 (def ^:private api-types
   "Command types whose payload comes from a JSON API rather than page metadata.
   Everything else must not trigger an API fetch - see `handle-slash-cmd`."
-  #{:api :api/define :api/tweet})
+  #{:api :api/define})
 
 (defn tokenize-setting-str [setting-key]
   (let [setting-str (some-> js/logseq.settings (aget setting-key) js->clj)]
@@ -32,17 +25,8 @@
   "Derive the URL to fetch for a command type from the block's last token."
   [type last-token token-url]
   (case type
-    :api/define  (str dictionary-api-base last-token)
-    :link/define (str "https://en.wiktionary.org/wiki/" last-token)
-    :api/tweet   (str tweet-api-base (-> token-url (str/split #"/") last))
+    :api/define (str config/dictionary-api-base last-token)
     token-url))
-
-(defn- auth-headers
-  "Authorization headers for command types that need them, else nil."
-  [type]
-  (when (= type :api/tweet)
-    {:Authorization
-     (str/fmt "Bearer %s" (some-> js/logseq.settings (aget "TwitterAccessToken")))}))
 
 (defn- fetch-link-preview
   "Fetch page metadata, resolving to nil instead of rejecting on failure.
@@ -88,7 +72,7 @@
                     ;; both ran for every command, so a plain title lookup
                     ;; fetched the page twice.
                     api-json (when (contains? api-types type)
-                               (ls/fetch-api url (auth-headers type)))
+                               (ls/fetch-api url nil))
                     api-edn  (when api-json (ednize api-json))
                     api-err  (ls/api-error api-edn)]
               (cond
@@ -96,8 +80,11 @@
                 (ls/show-msg (str "URL+: could not read metadata from " url))
 
                 api-err
-                (ls/show-msg (str "URL+: " api-err
-                                  (when-let [m (:message api-edn)] (str " - " m))))
+                (ls/show-msg
+                 (if (= type :api/define)
+                   (str "URL+: no definition found for \"" last-token "\"")
+                   (str "URL+: " api-err
+                        (when-let [m (:message api-edn)] (str " - " m)))))
 
                 :else
                 (p/let [meta-edn (when meta-res
@@ -124,9 +111,6 @@
                                   :api-json    (if api-json (js/JSON.stringify api-json nil 2) "")
                                   :api-attrs   (if api-edn (api/edn->logseq-attrs api-edn) "")
                                   :api-blocks  (if api-edn (api/edn->logseq-blocks api-edn) [])
-                                  :tweet-text   (-> api-edn :data first :text)
-                                  :tweet-time   (-> api-edn :data first :created_at)
-                                  :tweet-author (-> api-edn :includes :users first :username)
                                   :but-last    all-but-last}]
                   (devlog "Formatting block(s) ...")
                   (p/let [_ (when block (ls/update-block block-uuid (str/fmt block attrs)))]
@@ -165,10 +149,7 @@
               (swap! plugin-state assoc-in [:meta-edn :msg] "Loading")
               (p/let [meta-res (fetch-link-preview url)
                       meta-edn (when meta-res (ednize meta-res))
-                      ;; The old code tested `(= type :api/tweet)` here, but
-                      ;; `type` was never bound - it resolved to clojure.core/type,
-                      ;; so the branch could never fire. The inspector has no
-                      ;; command type, so no auth header applies.
+                      ;; The inspector has no command type, so no auth applies.
                       api-json (ls/fetch-api url nil)
                       api-edn  (ednize api-json)
                       api-err  (ls/api-error api-edn)
