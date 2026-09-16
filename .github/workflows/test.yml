@@ -53,6 +53,12 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      # Runs the same entry point a new contributor is told to run, so the
+      # bootstrap path cannot rot unnoticed. Everything it checks is installed
+      # by the steps above, so a failure here means the check itself broke.
+      - name: Verify toolchain
+        run: ./script/bootstrap.sh
+
       - name: Lint
         run: bb lint
 

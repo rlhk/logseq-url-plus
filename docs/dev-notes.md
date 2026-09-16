@@ -21,11 +21,20 @@ almost everything that has cost time here lives in it.
 ### Prerequisites
 
 ```
-bb doctor
+./script/bootstrap.sh
 ```
 
-Reports every missing tool and the command to install it: babashka, a JDK,
-node, yarn, clj-kondo and `node_modules`.
+The one command that works on a machine with nothing on it. Plain POSIX `sh`,
+no dependencies. It installs nothing; it tells you what is missing and hands
+off to `bb doctor`, which reports every other tool — JDK, node, yarn,
+clj-kondo, `node_modules` — and the command to fix each. Exit 0 means the
+toolchain is complete.
+
+Once babashka is present, `bb doctor` is the check to re-run; `bootstrap.sh`
+only exists because `bb doctor` cannot report that `bb` itself is missing.
+(A Makefile would not serve here: on macOS `/usr/bin/make` is a Command Line
+Tools shim that fails until Xcode CLT is installed, so `make` is *less*
+available than `/bin/sh`, not more.)
 
 **shadow-cljs needs JDK 21+** and dies with `UnsupportedClassVersionError` on
 anything older — but you do not need to export `JAVA_HOME`. The tasks find a

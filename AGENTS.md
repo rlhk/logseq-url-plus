@@ -7,6 +7,10 @@ declare npm deps and the Logseq plugin manifest.
 
 ## Prerequisites
 
+Run `./script/bootstrap.sh` first on an unknown machine — it is plain `sh` and
+needs nothing, whereas `bb doctor` cannot tell you that `bb` itself is missing.
+Thereafter `bb doctor` is the authoritative check.
+
 - **A JDK 21 or newer must be installed**, because shadow-cljs bundles a
   Closure Compiler built for class-file version 65. You do not need to export
   `JAVA_HOME`: the `bb` tasks resolve a suitable JDK themselves and will look
