@@ -217,6 +217,124 @@
        (re-find #"(?is)(.*?\s*)(\[.*?\]\(.*?\)|\S+?)$")
        rest))
 
+;; ---------------------------------------------------------------- caret split
+;;
+;; `else-and-last` above is anchored at `$`, so it can only ever return the
+;; final token. Everything below turns that into "the token at the cursor" by
+;; cutting the string at a token boundary first and handing the head to it
+;; unchanged - so the end-of-block case is byte-identical by construction.
+
+(defn- span-matcher
+  "A fresh global RegExp for `src`. Needed because `re-seq` discards offsets."
+  [src]
+  (js/RegExp. src "g"))
+
+(def ^:private token-span-src
+  ;; Markdown-link branch first, so `[a label with spaces](url)` is ONE token -
+  ;; a whitespace split cannot express that. `[^\s]*` for the URL part rather
+  ;; than `[^)]*` so `[Dog](.../Dog_(disambiguation))` survives; see the note on
+  ;; `md-link-re` above for the bug that taught us this.
+  "\\[[^\\]\\n]*\\]\\([^\\s]*\\)|\\S+")
+
+(defn- token-end-at-caret
+  "Snap `pos` rightwards to the end of the token enclosing it, else return it.
+
+  A caret inside a URL means that whole URL, not the half to its left."
+  [s pos]
+  (let [re (span-matcher token-span-src)]
+    (loop []
+      (if-let [m (.exec re s)]
+        (let [start (.-index m)
+              end   (+ start (count (aget m 0)))]
+          (if (and (< start pos) (< pos end)) end (recur)))
+        pos))))
+
+(defn split-at-caret
+  "Split `content` around the caret at `pos` into `{:before :token :after}`.
+
+  `:token` is the one the caret sits inside or immediately after; `:after` is
+  everything past it. With the caret at the end of the block - or with `pos`
+  unusable - this degrades to plain `else-and-last` with an empty `:after`,
+  which is what keeps existing behaviour byte-identical rather than merely
+  well-tested.
+
+  No non-whitespace character is ever dropped. Whitespace at the join is
+  normalised on purpose: Logseq only opens its command menu when `/` follows a
+  space and leaves that space in the block, so carrying it over as well would
+  widen the block by one space on every mid-block invocation."
+  [content pos]
+  (let [content (or content "")
+        usable? (and (number? pos)
+                     (not (js/isNaN pos))
+                     (<= 0 pos (count content)))]
+    (if-not usable?
+      (let [[before token] (else-and-last content)]
+        {:before before :token token :after ""})
+      (let [end            (token-end-at-caret content pos)
+            head           (subs content 0 end)
+            tail           (subs content end)
+            [before token] (else-and-last head)
+            dropped        (subs head (count (str/rtrim head)))
+            after          (if (and (seq dropped) (re-find #"^\s" tail))
+                             tail
+                             (str dropped tail))]
+        {:before before
+         :token  token
+         :after  (if (str/blank? after) "" after)}))))
+
+(defn splice-after-first-line
+  "Insert `tail` at the end of the first line at or after index `from` in `s`.
+
+  Eight of the block templates are a single line, where this is the same as
+  appending. The two attribute templates are not: they emit `key:: value`
+  lines, which have to own their lines, so a tail appended at the very end
+  would land below them and corrupt the block."
+  [s tail from]
+  (if (str/blank? tail)
+    s
+    (let [from (min (max 0 (or from 0)) (count s))
+          nl   (str/index-of s "\n" from)]
+      (if nl
+        (str (subs s 0 nl) tail (subs s nl))
+        (str s tail)))))
+
+(def ^:private md-link-span-src "\\[[^\\]\\n]*\\]\\([^\\s]*\\)")
+
+(defn- trim-url-punctuation
+  "Drop sentence punctuation a bare URL swept up from surrounding prose.
+
+  A trailing `)` is only dropped when the URL has no `(` of its own, so
+  `.../Dog_(disambiguation)` keeps its bracket while `(see https://a.com)`
+  does not keep the closing one."
+  [url]
+  (let [url (str/replace url #"[.,;:!?]+$" "")]
+    (if (and (str/ends-with? url ")") (not (str/includes? url "(")))
+      (subs url 0 (dec (count url)))
+      url)))
+
+(defn url-spans
+  "Every bare URL in `s` as `[start end url]`, left to right.
+
+  URLs already inside a markdown link are skipped so they are not wrapped a
+  second time."
+  [s]
+  (let [s     (or s "")
+        links (let [re (span-matcher md-link-span-src)]
+                (loop [acc []]
+                  (if-let [m (.exec re s)]
+                    (recur (conj acc [(.-index m) (+ (.-index m) (count (aget m 0)))]))
+                    acc)))
+        inside? (fn [i] (boolean (some (fn [[a b]] (and (>= i a) (< i b))) links)))
+        re      (span-matcher "https?://\\S+")]
+    (loop [acc []]
+      (if-let [m (.exec re s)]
+        (let [start (.-index m)
+              url   (trim-url-punctuation (aget m 0))]
+          (recur (if (or (inside? start) (str/blank? url))
+                   acc
+                   (conj acc [start (+ start (count url)) url]))))
+        acc))))
+
 (defn to-fixed [number places]
   (.toFixed number places))
 

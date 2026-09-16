@@ -1,6 +1,7 @@
 (ns util-spec
   (:require
    [cljs.test :refer [deftest is are testing]]
+   [clojure.string :as cstr]
    [util :as u]))
 
 (deftest utils
@@ -154,3 +155,121 @@
          (u/remove-url-trackers "https://example.com?utm_source=google&utm_medium=cpc&utm_campaign=summer")))
   (is (= "https://www.pinterest.com/pin/13651605113791129/?e_t=38c0d5cbcc4145b2811474ade9e79790"
          (u/remove-url-trackers "https://www.pinterest.com/pin/13651605113791129/?utm_campaign=category_rp&e_t=38c0d5cbcc4145b2811474ade9e79790&utm_source=31&utm_medium=2012&utm_content=13651605113791129&utm_term=1"))))
+;; ---------------------------------------------------------------- caret split
+
+(def ^:private else-and-last-inputs
+  ;; Mirrors the inputs pinned in the `else-and-last` table above. Kept as a
+  ;; def so the equivalence test below cannot quietly cover fewer cases than
+  ;; the behaviour it is protecting.
+  ["world"
+   "  world"
+   "hello good world"
+   "the new    fox is a red fox  "
+   " The fox said:\n\r It's a new \n new hell!"
+   " Last term is link with space in label: [GitHub: Let’s build from here](https://github.com)"])
+
+(deftest split-at-caret-degrades-to-else-and-last
+  ;; The backward-compatibility guarantee for every existing user: with the
+  ;; caret at the end of the block - which is where typing a URL then "/" puts
+  ;; it - the new split must equal the old one exactly, with nothing trailing.
+  (doseq [s else-and-last-inputs]
+    (let [[before token] (u/else-and-last s)]
+      (testing (str "end of block: " (pr-str s))
+        (are [pos] (= {:before before :token token :after ""}
+                      (u/split-at-caret s pos))
+          nil            ; cursor API unavailable
+          (count s)      ; caret at end
+          js/NaN         ; degraded pos
+          -1             ; degraded pos
+          99999)))))     ; past the end
+
+(deftest split-at-caret
+  (are [content pos out] (= out (u/split-at-caret content pos))
+    ;; Issue #20: two URLs, caret at the end of the first. The separator space
+    ;; and everything after it must survive.
+    "alpha https://a.com middle https://b.com" 19
+    {:before "alpha " :token "https://a.com" :after " middle https://b.com"}
+
+    ;; Caret strictly inside the first URL snaps right to the whole URL.
+    "alpha https://a.com middle https://b.com" 12
+    {:before "alpha " :token "https://a.com" :after " middle https://b.com"}
+
+    ;; A markdown link whose label contains spaces is one token, which is why
+    ;; this cannot be a whitespace split.
+    "see [My Page](https://a.com) then more" 20
+    {:before "see " :token "[My Page](https://a.com)" :after " then more"}
+
+    ;; Parenthesised URL inside a link - the md-link-re lesson.
+    "x [Dog](https://en.wikipedia.org/wiki/Dog_(disambiguation)) y" 30
+    {:before "x " :token "[Dog](https://en.wikipedia.org/wiki/Dog_(disambiguation))" :after " y"}
+
+    ;; Caret sitting in a run of whitespace. The run is NOT carried over on
+    ;; both sides of the join: Logseq only opens its command menu when "/"
+    ;; follows a space and leaves that space in the block, so preserving it as
+    ;; well would widen the block by one space on every mid-block invocation.
+    ;; The cost is that a block which genuinely had two spaces there comes back
+    ;; with one - accepted, because double spaces carry no meaning in markdown
+    ;; while a space that grows on every use is a visible wart.
+    "alpha https://a.com  middle" 20
+    {:before "alpha " :token "https://a.com" :after " middle"}
+
+    ;; Caret at column 0 - no token to its left.
+    "alpha https://a.com" 0
+    {:before nil :token nil :after "alpha https://a.com"}
+
+    ;; Multi-line: `before` spans the newline, `after` keeps the rest of line 2.
+    "line one https://a.com\nline two https://b.com tail" 44
+    {:before "line one https://a.com\nline two " :token "https://b.com" :after " tail"}))
+
+(deftest split-at-caret-is-lossless
+  ;; No non-whitespace character may ever be dropped. This matters more than
+  ;; usual: for the first time the plugin rewrites blocks that have text AFTER
+  ;; the token, and silently deleting it would be far worse than issue #20.
+  (let [strip #(cstr/replace (or % "") #"\s+" "")]
+    (doseq [[content pos] [["alpha https://a.com middle https://b.com" 19]
+                           ["alpha https://a.com middle https://b.com" 12]
+                           ["see [My Page](https://a.com) then more" 20]
+                           ["alpha https://a.com  middle" 20]
+                           ["alpha https://a.com" 0]
+                           ["line one https://a.com\nline two https://b.com tail" 44]
+                           ["trailing spaces here   " 23]]]
+      (let [{:keys [before token after]} (u/split-at-caret content pos)]
+        (is (= (strip content) (strip (str before token after)))
+            (str "lost characters at pos " pos " of " (pr-str content)))))))
+
+(deftest splice-after-first-line
+  ;; Single-line templates: same as appending.
+  (is (= "see [T](u) rest"
+         (u/splice-after-first-line "see [T](u)" " rest" 4)))
+  ;; Attribute templates emit `key:: value` lines that must own their lines, so
+  ;; the tail belongs at the end of line 1, not below the properties.
+  (is (= "see [T](u) rest\ntitle:: T\n"
+         (u/splice-after-first-line "see [T](u)\ntitle:: T\n" " rest" 4)))
+  ;; A `before` prefix that itself contains newlines must not splice into the
+  ;; user's first line.
+  (is (= "para one\npara two [T](u) rest\ntitle:: T"
+         (u/splice-after-first-line "para one\npara two [T](u)\ntitle:: T" " rest" 9)))
+  ;; Nothing to splice.
+  (is (= "unchanged" (u/splice-after-first-line "unchanged" "" 0)))
+  (is (= "unchanged" (u/splice-after-first-line "unchanged" nil 0)))
+  ;; Out-of-range `from` is clamped rather than throwing.
+  (is (= "abc!" (u/splice-after-first-line "abc" "!" 9999))))
+
+(deftest url-spans
+  (is (= [[6 19 "https://a.com"] [27 40 "https://b.com"]]
+         (u/url-spans "alpha https://a.com middle https://b.com")))
+  ;; A URL already inside a markdown link is skipped, so the convert-all
+  ;; command cannot wrap it twice.
+  (is (= [[29 42 "https://b.com"]]
+         (u/url-spans "see [My Page](https://a.com) https://b.com")))
+  ;; Sentence punctuation is not part of the URL.
+  (is (= [[6 19 "https://a.com"]]
+         (u/url-spans "visit https://a.com.")))
+  ;; ...but a URL's own parentheses are.
+  (is (= "https://en.wikipedia.org/wiki/Dog_(disambiguation)"
+         (nth (first (u/url-spans "see https://en.wikipedia.org/wiki/Dog_(disambiguation) ok")) 2)))
+  ;; A closing paren from surrounding prose is not.
+  (is (= "https://a.com"
+         (nth (first (u/url-spans "(see https://a.com)")) 2)))
+  (is (= [] (u/url-spans "no links here")))
+  (is (= [] (u/url-spans nil))))
