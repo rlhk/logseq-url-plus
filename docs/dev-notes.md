@@ -483,4 +483,14 @@ keystrokes. Start the watch, `bb sideload`, then in a scratch block:
 6. `/URL+ Inspector ...` -> modal opens, all three tabs render, Esc and
    backdrop-click close it, Confirm writes the block.
 7. Empty block + any command -> graceful message, no throw.
-8. `bb reload` -> each slash command appears **once** (11 total).
+8. `bb reload` -> each slash command appears **once** (12 total).
+9. Multi-URL block: `alpha https://example.com middle https://github.com omega`.
+   Put the cursor at the **end of** the first URL, run `/URL+ [title](url)` ->
+   the first is formatted and the rest of the block is untouched. Repeat at the
+   end of the second. (Mid-URL does not work by design: Logseq needs a space
+   before `/`, which splits the URL.)
+10. `see https://example.com for details`, cursor at the end -> the sole URL is
+    used even though the cursor is on a word.
+11. `URL+ All links in block` on a block mixing a bare URL, an existing
+    markdown link and an unreachable URL -> only the bare one is converted and
+    the count reports honestly.
