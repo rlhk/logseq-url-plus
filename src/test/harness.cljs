@@ -56,33 +56,53 @@
   "Install a fake `logseq` global that records every Editor/UI call.
 
   `:block-uuid nil` simulates no block being edited, which is what
-  `getCurrentBlock` resolves to outside an editing context."
-  [{:keys [block-uuid block-content settings]
-    :or   {block-uuid "uuid-1" settings {}}}]
-  (set! (.-logseq js/globalThis)
-        #js {:settings (clj->js settings)
-             :UI #js {:showMsg (fn [msg]
-                                 (record! :show-msg (str msg))
-                                 (js/Promise.resolve))}
-             :Editor
-             #js {:getCurrentBlock
-                  (fn [] (js/Promise.resolve (when block-uuid #js {:uuid block-uuid})))
-                  :getEditingBlockContent
-                  (fn [] (js/Promise.resolve block-content))
-                  :updateBlock
-                  (fn [uuid content]
-                    (record! :update-block uuid content)
-                    (js/Promise.resolve))
-                  :insertBlock
-                  (fn [uuid content]
-                    (record! :insert-block uuid content)
-                    (js/Promise.resolve))
-                  :insertBatchBlock
-                  (fn [uuid blocks opts]
-                    (record! :insert-batch-block uuid blocks opts)
-                    (js/Promise.resolve))
-                  :registerSlashCommand
-                  (fn [desc handler] (record! :register-slash-command desc handler))}}))
+  `getCurrentBlock` resolves to outside an editing context.
+
+  `:cursor-pos` models the caret, with four cases that behave differently:
+
+  - **omitted** - caret at the end of the block. This is the real default: it
+    is where typing a URL then \"/\" leaves it, so tests that say nothing
+    about the cursor still exercise the caret path rather than the fallback.
+  - integer - caret at that offset.
+  - `nil` - `getEditingCursorPosition` resolves to null, i.e. not editing.
+  - `:missing` - the method is not defined at all, as on an older host."
+  [{:keys [block-uuid block-content settings cursor-pos]
+    :or   {block-uuid "uuid-1" settings {}}
+    :as   opts}]
+  (let [editor #js {}]
+    ;; Assigned after the fact so `:missing` can leave the property off
+    ;; entirely - an explicit nil and an absent key must stay distinguishable.
+    (when-not (= :missing cursor-pos)
+      (let [pos (if (contains? opts :cursor-pos)
+                  cursor-pos
+                  (count (or block-content "")))]
+        (aset editor "getEditingCursorPosition"
+              (fn [] (js/Promise.resolve (when (some? pos) #js {:pos pos}))))))
+    (set! (.-logseq js/globalThis)
+          #js {:settings (clj->js settings)
+               :UI #js {:showMsg (fn [msg]
+                                   (record! :show-msg (str msg))
+                                   (js/Promise.resolve))}
+               :Editor
+               (doto editor
+                 (aset "getCurrentBlock"
+                       (fn [] (js/Promise.resolve (when block-uuid #js {:uuid block-uuid}))))
+                 (aset "getEditingBlockContent"
+                       (fn [] (js/Promise.resolve block-content)))
+                 (aset "updateBlock"
+                       (fn [uuid content]
+                         (record! :update-block uuid content)
+                         (js/Promise.resolve)))
+                 (aset "insertBlock"
+                       (fn [uuid content]
+                         (record! :insert-block uuid content)
+                         (js/Promise.resolve)))
+                 (aset "insertBatchBlock"
+                       (fn [uuid blocks opts]
+                         (record! :insert-batch-block uuid blocks opts)
+                         (js/Promise.resolve)))
+                 (aset "registerSlashCommand"
+                       (fn [desc handler] (record! :register-slash-command desc handler))))})))
 
 ;; -------------------------------------------------------------- fetch stub
 

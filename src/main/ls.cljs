@@ -22,6 +22,25 @@
 (defn show-msg [msg] (.showMsg (.-UI js/logseq) msg))
 (defn get-current-block [] (.getCurrentBlock (editor)))
 (defn get-editing-block-content [] (.getEditingBlockContent (editor)))
+
+(defn get-editing-cursor-pos
+  "Caret offset in the block being edited, or nil.
+
+  Always resolves, never rejects - the `fetch-api` rule - because two of its
+  failure modes are undocumented and both are normal:
+
+  - it resolves to null whenever nothing is being edited;
+  - the method may be absent entirely, on an older host or under a test stub.
+
+  Returns just the integer. `BlockCursorPosition` also carries left/top/height
+  and a DOMRect; keeping that shape out of `core` is the point of the wrapper."
+  []
+  (let [f (some-> (editor) (aget "getEditingCursorPosition"))]
+    (if-not (fn? f)
+      (p/resolved nil)
+      (-> (p/do (.call f (editor)))
+          (p/then (fn [res] (some-> res (aget "pos"))))
+          (p/catch (fn [err] (devlog "getEditingCursorPosition failed:" err) nil))))))
 (defn update-block [uuid content] (.updateBlock (editor) uuid content))
 (defn insert-block [uuid content] (.insertBlock (editor) uuid content))
 (defn insert-batch-block [uuid blocks opts] (.insertBatchBlock (editor) uuid blocks opts))

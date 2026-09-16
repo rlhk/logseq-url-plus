@@ -70,6 +70,12 @@
     :block "%(but-last)s%(token)s"
     :child "```json\n%(api-json)s\n```"
     :setting-key "UrlPlusApiToJson"}
+   {:desc "URL+ All links in block"
+    ;; No :block template - `core/handle-all-links!` rewrites many spans in one
+    ;; block rather than substituting a single token, so it does not fit the
+    ;; `%(but-last)s` shape every other command uses.
+    :type :all-links
+    :setting-key "UrlPlusAllLinks"}
    {:desc "URL+ Append Word Definition"
     :type :api/define
     :block "%(but-last)s%(token)s #card"

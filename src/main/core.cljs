@@ -45,33 +45,84 @@
                  nil))))
 
 (defn- editing-context
-  "Resolve the current editing context: the block being edited and the last
-  token of its content.
+  "Resolve the current editing context, with **two** splits of the block.
 
-  `:block-uuid` is nil when nothing is being edited - `getEditingBlockContent`
-  resolves to null there, which used to reach a regex and throw. Shared by the
-  slash commands and the inspector, which carried identical preambles."
+  - `:before-token` / `:token` are the last token, exactly as before. The
+    inspector reads these and is deliberately left on that behaviour.
+  - `:caret-before` / `:caret-token` / `:caret-after` are the token at the
+    cursor. Only `handle-slash-cmd` uses these.
+
+  Both are returned rather than one being chosen here, because the two callers
+  genuinely want different things and picking centrally would force one of them
+  to change. `:block-uuid` is nil when nothing is being edited -
+  `getEditingBlockContent` resolves to null there, which used to reach a regex
+  and throw."
   []
-  (p/let [current-block (ls/get-current-block)
+  ;; Cursor first: it is the most volatile of the three reads.
+  (p/let [cursor-pos    (ls/get-editing-cursor-pos)
+          current-block (ls/get-current-block)
           block-content (ls/get-editing-block-content)]
     (let [[before-token token] (when (string? block-content)
-                                 (else-and-last block-content))]
+                                 (else-and-last block-content))
+          caret (when (string? block-content)
+                  (u/split-at-caret block-content cursor-pos))]
       {:block-uuid    (some-> current-block (aget "uuid"))
        :block-content block-content
        :before-token  before-token
-       :token         token})))
+       :token         token
+       :caret-before  (:before caret)
+       :caret-token   (:token caret)
+       :caret-after   (or (:after caret) "")})))
+
+(defn- clean-remote-text
+  "Make fetched remote text safe to put in a block.
+
+  Titles and descriptions land in the user's graph verbatim, so they are
+  decoded and then escaped before they can inject markdown links or Logseq
+  property and macro syntax."
+  [v]
+  (or (some-> v decode-html-content u/md-inline-escape) ""))
+
+(defn- token-url?
+  "True when `tok` is a URL, or a markdown link wrapping one."
+  [tok]
+  (boolean (when-let [u (second (api/md-link->label-and-url tok))]
+             (http? u))))
+
+(def ^:private url-consuming-types
+  ;; :api/define deliberately absent. It wants a word, so the sole-URL rescue
+  ;; below must never hijack it - in "https://a.com prodigy" with the cursor
+  ;; after the word, defining the URL instead would be plainly wrong.
+  #{:meta :api})
 
 (defn handle-slash-cmd [{:keys [type mode block child]
                          :or   {mode :template}}]
-  (p/let [{:keys [block-uuid token] :as ctx} (editing-context)]
-    (let [all-but-last (:before-token ctx)
-          last-token   token]
+  (p/let [{:keys [block-uuid block-content] :as ctx} (editing-context)]
+    (let [caret-token (:caret-token ctx)
+          ;; Sole-URL rescue: with exactly one URL in the block and the cursor
+          ;; parked on something else, use that URL rather than failing. It is
+          ;; unambiguous by definition - there is nothing else it could mean.
+          rescue      (when (and (contains? url-consuming-types type)
+                                 (not (token-url? caret-token))
+                                 (string? block-content))
+                        (u/sole-url-span block-content))
+          [all-but-last last-token after]
+          (if rescue
+            (let [[start end tok] rescue]
+              [(subs block-content 0 start) tok (subs block-content end)])
+            [(:caret-before ctx) caret-token (:caret-after ctx)])]
       (cond
         (not block-uuid)
         (ls/show-msg "URL+: no block is being edited.")
 
-        (str/blank? last-token)
+        (str/blank? block-content)
         (ls/show-msg "URL+: the current block has no token to work with.")
+
+        (str/blank? last-token)
+        ;; Reached when the cursor sits at the very start of a non-empty block.
+        ;; Deliberately NOT a silent fall back to the last token: that is the
+        ;; issue #20 behaviour, and doing it here would reintroduce it.
+        (ls/show-msg "URL+: no URL or word before the cursor.")
 
         :else
         (p/let [[maybe-label, token-url] (api/md-link->label-and-url last-token)
@@ -120,7 +171,7 @@
                                     (ednize meta-res)
                                     (map keyword (tokenize-setting-str "UrlPlusExcludeAttrs"))
                                     (map keyword (tokenize-setting-str "UrlPlusIncludeAttrs"))))
-                        clean    (fn [v] (or (some-> v decode-html-content u/md-inline-escape) ""))
+                        clean    clean-remote-text
                         attrs    {:token       last-token
                                   :url         url
                                   :link-or-url (if maybe-label
@@ -141,7 +192,15 @@
                                   :api-blocks  (if api-edn (api/edn->logseq-blocks api-edn) [])
                                   :but-last    all-but-last}]
                   (devlog "Formatting block(s) ...")
-                  (p/let [_ (when block (ls/update-block block-uuid (str/fmt block attrs)))]
+                  (p/let [_ (when block
+                              (ls/update-block
+                               block-uuid
+                               ;; The tail goes in at the end of the FIRST line,
+                               ;; not the end of the string: the two attribute
+                               ;; templates emit `key:: value` lines that must
+                               ;; own their lines.
+                               (u/splice-after-first-line
+                                (str/fmt block attrs) after (count all-but-last))))]
                     (if (= mode :block)
                       (ls/insert-batch-block block-uuid
                                              (clj->js (:api-blocks attrs))
@@ -204,6 +263,46 @@
   ;; `defonce` so a shadow-cljs hot reload does not reset the guard.
   (atom false))
 
+(defn handle-all-links!
+  "Turn every bare URL in the block into a markdown link, in one pass.
+
+  A separate command rather than a mode on the others: \"all of them\" has no
+  meaning for the commands that write a single child block or a single
+  `title::` property, so it only exists where it is coherent.
+
+  URLs already inside a markdown link are left alone, and any whose metadata
+  cannot be fetched are left exactly as they were - a partial result is more
+  useful than an aborted one, so the count says what happened."
+  []
+  (p/let [{:keys [block-uuid block-content]} (editing-context)]
+    (if-not block-uuid
+      (ls/show-msg "URL+: no block is being edited.")
+      (let [spans (u/url-spans block-content)]
+        (if (empty? spans)
+          (ls/show-msg "URL+: no URLs in this block.")
+          (p/let [_ (ls/show-msg (str/fmt "URL+: fetching $0 URL(s) ..." [(count spans)]))
+                  results
+                  (p/all
+                   (map (fn [[start end url]]
+                          (let [clean-url (-> url u/canonicalize-url remove-url-trackers)]
+                            (p/let [meta (fetch-link-preview clean-url)]
+                              {:start start
+                               :end   end
+                               :url   clean-url
+                               :title (some-> meta ednize :title clean-remote-text)})))
+                        spans))
+                  resolved (remove #(str/blank? (:title %)) results)
+                  ;; Right to left, so replacing one span cannot invalidate the
+                  ;; offsets of the ones before it.
+                  rebuilt  (reduce (fn [acc {:keys [start end url title]}]
+                                     (str (subs acc 0 start)
+                                          (str/fmt "[$0]($1)" [title url])
+                                          (subs acc end)))
+                                   block-content
+                                   (reverse (sort-by :start resolved)))
+                  _ (when (seq resolved) (ls/update-block block-uuid rebuilt))]
+            (ls/show-msg (str/fmt "URL+: linked $0 of $1 URLs." [(count resolved) (count spans)]))))))))
+
 (defn- register-slash-commands! []
   (if @slash-commands-registered?
     ;; `reload` re-enters `main`, and Logseq has no unregister API, so without
@@ -213,9 +312,15 @@
     (do
       (when (cmd-enabled? {:setting-key "UrlPlusInspector"})
         (ls/register-slash-command "URL+ Inspector ..." #(show-inspector-ui)))
-      (doseq [{:keys [desc] :as opts} (filter cmd-enabled? config/slash-commands)]
+      (doseq [{:keys [desc type] :as opts} (filter cmd-enabled? config/slash-commands)]
         (devlog "Registering:" desc)
-        (ls/register-slash-command desc, #(handle-slash-cmd opts)))
+        (ls/register-slash-command
+         desc
+         (if (= type :all-links)
+           ;; Does not fit the `%(but-last)s` template shape: it rewrites many
+           ;; spans in one block rather than substituting one token.
+           #(handle-all-links!)
+           #(handle-slash-cmd opts))))
       (reset! slash-commands-registered? true))))
 
 (defn main []
