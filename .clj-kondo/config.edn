@@ -1,0 +1,30 @@
+;; clj-kondo configuration for logseq-url-plus.
+;;
+;; Run: clj-kondo --lint src
+;;
+;; Notes:
+;; - Rum component macros (`defc`/`defcs`/`defcc`) support an optional
+;;   `< mixin ...` clause between the name and the argument vector, which
+;;   `clojure.core/defn` cannot model. `def-catch-all` registers the var and
+;;   skips body analysis, which removes ~35 false "Unresolved symbol" errors.
+;; - `:skip-comments` keeps `(comment ...)` REPL scratch blocks unlinted; they
+;;   are intentional and reference vars that only exist in a live runtime.
+{:lint-as
+ {;; promesa's binding macros are `let`/`loop`-shaped.
+  promesa.core/let   clojure.core/let
+  promesa.core/plet  clojure.core/let
+  promesa.core/loop  clojure.core/loop
+  promesa.core/doseq clojure.core/doseq
+
+  rum.core/defc  clj-kondo.lint-as/def-catch-all
+  rum.core/defcs clj-kondo.lint-as/def-catch-all
+  rum.core/defcc clj-kondo.lint-as/def-catch-all}
+
+ :skip-comments true
+
+ :linters
+ {:unresolved-symbol   {:level :error}
+  :unused-binding      {:level :warning}
+  :unused-namespace    {:level :warning}
+  :redundant-do        {:level :warning}
+  :missing-else-branch {:level :warning}}}

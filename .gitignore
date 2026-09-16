@@ -16,8 +16,8 @@ pom.xml.asc
 .nrepl-*
 .DS_Store
 
-.clj-kondo
-.lsp
+.clj-kondo/.cache
+.lsp/.cache
 .portal
 .calva
 .cpcache

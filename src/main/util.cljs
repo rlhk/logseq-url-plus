@@ -25,8 +25,9 @@
 ;; https://github.com/lambdaisland/uri maybe useful
 (defn url? [s]
   (try
-    (do (js/URL. s) true)
-    (catch js/Object e false)))
+    (js/URL. s)
+    true
+    (catch js/Object _e false)))
 
 (defn http? [s]
   (and (str/starts-with? s "http")

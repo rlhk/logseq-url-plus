@@ -26,7 +26,24 @@ shadow-cljs setup could be verified by launching the browser REPL
 
 On MacOS, a browser will be opened to provide the CLJS runtime. Input `(js/alert "Hello World)` in the REPL and a classic alert box will be shown in the browser window.
 
-In case of Java version related errors, you might want to manage Java with https://github.com/jenv/
+**JDK 21+ is required.** shadow-cljs 3.1.2 bundles a Closure Compiler built for
+class-file version 65, so building on JDK 17 fails with:
+
+```
+UnsupportedClassVersionError: com/google/javascript/jscomp/CompilerOptions
+has been compiled by a more recent version of the Java Runtime (class file
+version 65.0), this version of the Java Runtime only recognizes class file
+versions up to 61.0
+```
+
+Set `JAVA_HOME` before building, for example:
+
+```
+export JAVA_HOME=/opt/homebrew/opt/openjdk   # JDK 21 or newer
+```
+
+CI already pins JDK 21 (see `.github/workflows/publish.yml`), so this affects
+local development only. To manage multiple JDKs, see https://github.com/jenv/
 
 #### Development
 
@@ -54,6 +71,30 @@ In the Logseq App
 - [VSCode Neovim](https://marketplace.visualstudio.com/items?itemName=asvetliakov.vscode-neovim)
 - [Calva](https://marketplace.visualstudio.com/items?itemName=betterthantomorrow.calva)
   - [Paredit](https://calva.io/paredit/) in [Calva](https://calva.io)
+
+#### REPL readiness — check before attaching
+
+The plugin's CLJS runtime lives **inside a Logseq iframe**, so it does not exist
+until Logseq is running with the plugin loaded. Three states are easy to
+conflate; keep them separate:
+
+1. **server/watch alive** — a shadow-cljs worker exists for the build
+2. **build ready** — that worker compiled successfully
+3. **runtime attached** — a live JS runtime is connected
+
+```
+bb repl-status
+```
+
+```
+shadow-cljs server : running
+:plugin             watch=running     runtimes=1
+:test               watch=running     runtimes=1
+```
+
+If `:plugin runtimes=0`, do **not** attach or evaluate yet — you would be
+talking to the JVM Clojure REPL instead of the plugin, and the results will be
+confusing. Start `bb dev` and load the unpacked plugin in Logseq first.
 
 #### REPL Setup in VSCode with Calva
 

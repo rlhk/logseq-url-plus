@@ -4,6 +4,11 @@
   :init (do (defn x [& cmds] (doseq [cmd cmds] (shell cmd)))
             (def v (-> (slurp "package.json") (json/parse-string true) :version)))
   test       (x "npx shadow-cljs release test")
+  lint       {:doc "Lint all ClojureScript sources with clj-kondo."
+              :task (x "clj-kondo --lint src")}
+  repl-status
+  {:doc "REPL readiness. 0 runtimes = no CLJS runtime attached; run Logseq with the plugin loaded."
+   :task (x "script/repl-status.sh")}
   prep       (x "rm -fr dist out", "mkdir dist", "cp -R resources/. dist/")
   watch-cljs (x "yarn", "npx shadow-cljs watch :plugin :test")
   watch-tw   (x "npx tailwindcss -i ./resources/tailwind.css -o ./dist/styles.css --watch")
