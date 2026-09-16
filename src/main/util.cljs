@@ -5,8 +5,36 @@
    [cuerdas.core :as str]
    [goog.html.textExtractor :as gtext]))
 
+(def ^:private named-entities
+  {"&amp;" "&" "&lt;" "<" "&gt;" ">" "&quot;" "\"" "&apos;" "'"
+   "&#39;" "'" "&nbsp;" " " "&mdash;" "\u2014" "&ndash;" "\u2013"
+   "&hellip;" "\u2026" "&rsquo;" "\u2019" "&lsquo;" "\u2018"
+   "&ldquo;" "\u201c" "&rdquo;" "\u201d"})
+
+(defn- decode-entities
+  "Decode HTML entities without a DOM. Handles the common named entities plus
+  decimal and hex numeric references."
+  [s]
+  (-> (reduce-kv (fn [acc entity ch] (str/replace acc entity ch)) (str s) named-entities)
+      (str/replace #"&#(\d+);"
+                   (fn [[_ n]] (js/String.fromCodePoint (js/parseInt n 10))))
+      (str/replace #"&#[xX]([0-9a-fA-F]+);"
+                   (fn [[_ n]] (js/String.fromCodePoint (js/parseInt n 16))))))
+
 ;; https://github.com/google/closure-library/blob/master/closure/goog/html/textextractor.js#L13
-(def decode-html-content gtext/extractTextContent)
+(defn decode-html-content
+  "Decode entities in remote text such as a fetched page title.
+
+  Uses Closure's text extractor when a DOM is available - that is the case in
+  the plugin, which runs inside a Logseq iframe, and it also strips any markup.
+  Falls back to a plain entity decode when there is no `document`, so this
+  namespace remains usable in a Node runtime; that is what lets the integration
+  harness exercise the :meta pipeline."
+  [s]
+  (when (some? s)
+    (if (exists? js/document)
+      (gtext/extractTextContent s)
+      (decode-entities s))))
 
 (defn devlog [& msgs]
   (when goog.DEBUG

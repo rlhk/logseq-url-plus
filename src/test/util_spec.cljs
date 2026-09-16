@@ -74,6 +74,15 @@
     ;; Not a URL at all - returned unchanged rather than throwing.
     "just-a-word" "just-a-word"))
 
+(deftest decode-html-content
+  (are [in out] (= (u/decode-html-content in) out)
+    "Tom &amp; Jerry"   "Tom & Jerry"
+    "&lt;tag&gt;"       "<tag>"
+    "it&#39;s"          "it's"
+    "caf&#xe9;"         "caf\u00e9"
+    "plain"             "plain"
+    nil                 nil))
+
 (deftest md-inline-escape
   (are [in out] (= (u/md-inline-escape in) out)
     "Plain title"                 "Plain title"

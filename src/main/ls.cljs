@@ -1,17 +1,31 @@
-(ns ls 
-  "Interops with Logseq plugin API "
+(ns ls
+  "Interop with the Logseq plugin API.
+
+  Every accessor resolves `js/logseq` at call time rather than capturing its
+  methods at namespace load. Two reasons:
+
+  1. Calling through the owning object keeps `this` bound. The previous
+     `(def show-msg js/logseq.UI.showMsg)` form detached the method and only
+     worked because @logseq/libs happens to hand back bound proxies - the
+     comment block below records that it already failed for top-level methods.
+  2. It lets this namespace load where the `logseq` global does not exist yet,
+     which is what makes the integration harness possible under Node.
+
+  Importing @logseq/libs (which installs the global as a side effect) is the
+  entry namespace's job, not this one's."
   (:require
    [promesa.core :as p]
-   [util :as u :refer [devlog]]
-   ["@logseq/libs"]))
+   [util :as u :refer [devlog]]))
 
-(def show-msg js/logseq.UI.showMsg)
-(def get-current-block js/logseq.Editor.getCurrentBlock)
-(def get-editing-block-content js/logseq.Editor.getEditingBlockContent)
-(def update-block js/logseq.Editor.updateBlock)
-(def insert-block js/logseq.Editor.insertBlock)
-(def insert-batch-block js/logseq.Editor.insertBatchBlock)
-(def register-slash-command js/logseq.Editor.registerSlashCommand)
+(defn- editor [] (.-Editor js/logseq))
+
+(defn show-msg [msg] (.showMsg (.-UI js/logseq) msg))
+(defn get-current-block [] (.getCurrentBlock (editor)))
+(defn get-editing-block-content [] (.getEditingBlockContent (editor)))
+(defn update-block [uuid content] (.updateBlock (editor) uuid content))
+(defn insert-block [uuid content] (.insertBlock (editor) uuid content))
+(defn insert-batch-block [uuid blocks opts] (.insertBatchBlock (editor) uuid blocks opts))
+(defn register-slash-command [desc handler] (.registerSlashCommand (editor) desc handler))
 
 ;; Top level Logseq methods have to be called directly.
 ;; Defining in any ns won't work

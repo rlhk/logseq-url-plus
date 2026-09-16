@@ -4,7 +4,6 @@
    [cuerdas.core :as str]
    [promesa.core :as p]
    [rum.core :as rum]
-   ["@logseq/libs"]
    ["link-preview-js" :as link-preview]
    [util :as u :refer [devlog decode-html-content ednize http? else-and-last remove-url-trackers]]
    [ls] [config :refer [plugin-state]] [api] [ui]
@@ -28,8 +27,12 @@
     :api/define (str config/dictionary-api-base last-token)
     token-url))
 
-(defn- fetch-link-preview
+(defn fetch-link-preview
   "Fetch page metadata, resolving to nil instead of rejecting on failure.
+
+  Public so the integration harness can inject a fixture in place of a real
+  network call (link-preview-js does its own fetching, out of reach of a
+  `js/fetch` stub).
 
   Redirects are followed with link-preview-js's default behaviour. The
   previous version passed `:followRedirects \"manual\"` with a handler that

@@ -19,10 +19,10 @@
  {:plugin {:target :browser
            :module-loader true
            :output-dir "dist"
-           :modules  {:index {:init-fn core/init}}
+           :modules  {:index {:init-fn entry/init}}
            :devtools {:preloads [devtools.preload
                                  portal.setup]
-                      :after-load core/reload
+                      :after-load entry/reload
                       :repl-pprint true
                       :watch-dir "dist"} ; Doesn't work for Logseq dev mode. Have to reload plugin.
            :dev {}
