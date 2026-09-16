@@ -6,10 +6,14 @@
    [cuerdas.core :as str]))
 
 (defn md-link->label-and-url
-  "Convert markdown link to [label, url], return input as it is if not a markdown link."
+  "Convert a markdown link to [label url]; returns [nil s] when `s` is not one.
+
+  Delegates to util/str->md-link - the two carried the same regex in different
+  shapes, and only one of them needed fixing for nested parentheses."
   [maybe-link]
-  (let [output (re-find #"\[(.*?)\]\((.*?)\)" maybe-link)]
-    (if output (rest output), [nil maybe-link])))
+  (if-let [{:keys [label link]} (u/str->md-link maybe-link)]
+    [label link]
+    [nil maybe-link]))
 
 (defn- single-line
   "Collapse newlines so a value cannot break out of the construct holding it."

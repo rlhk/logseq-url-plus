@@ -106,8 +106,8 @@
    "▶️ "
    (case template-key
      :block-template
-     (str/fmt (get state template-key "")
-              (merge (select-keys state block-attrs) (get state :meta-edn)))
+     (u/safe-fmt (get state template-key "")
+                 (merge (select-keys state block-attrs) (get state :meta-edn)))
      :child-template 
      (str/fmt "NOTE: Child block will render metadata/data as: <%s>" 
           (get config/child-block-options (-> state :option :child-block-format)))
@@ -181,50 +181,48 @@
                    (or (u/http? token), (u/md-link? token)))
           issue-indicator)])]))
 
+(defn- write-block!
+  "Apply the block template and optional child block, then write both.
+
+  The :website and :api paths differ only in which state key feeds the
+  template and the child block, so they share this."
+  [state block-uuid data]
+  (let [{:keys [append-child-block? child-block-format]} (:option state)]
+    (ls/format-block-and-child
+     block-uuid
+     (u/safe-fmt (:block-template state)
+                 (merge (select-keys state block-attrs) data))
+     (when append-child-block?
+       (md-data-block data child-block-format)))))
+
 (defn handle-action [state]
   (when-let [block-uuid (-> state :block :uuid)]
-    (case (-> state :option :semantics)
-      :website
-      (do
-        (devlog "Handle semantics: :website")
-        (ls/format-block-and-child
-         block-uuid
-         (when-let [block-template (:block-template state)]
-           (str/fmt block-template (merge (select-keys state block-attrs) (:meta-edn state))))
-         (let [{:keys [append-child-block? child-block-format]} (:option state)]
-           (when append-child-block? (md-data-block (:meta-edn state) child-block-format)))))
-      :api
-      (do
-        (devlog "Handle semantics: :api") 
-        (ls/format-block-and-child
-         block-uuid
-         (when-let [block-template (:block-template state)]
-           (str/fmt block-template (merge (select-keys state block-attrs) (:api-edn state))))
-         (let [{:keys [append-child-block? child-block-format]} (:option state)]
-           (when append-child-block? (md-data-block (:api-edn state) child-block-format)))))
-      :word
-      (p/let [{:keys [token option]} state
-              {:keys [append-child-block? child-block-format]} option
-              url      (str config/dictionary-api-base token)
-              ;; fetch-api resolves to {:error ...} rather than rejecting, so
-              ;; the old p/then-identity / p/catch-log wrapper was dead code.
-              api-json (ls/fetch-api url nil)
-              api-edn  (u/ednize api-json)
-              api-err  (ls/api-error api-edn)
-              definition (when-not api-err (define/fmt-definition api-edn))]
-        (devlog "Handle semantics: :word")
-        (devlog "definition:" definition)
-        ;; dictionaryapi.dev is community-run with no SLA, and returns 404 for
-        ;; an unknown word. Say so rather than silently writing nothing.
-        (when api-err
-          (ls/show-msg (str "URL+: no definition for \"" token "\" (" api-err ")")))
-        (ls/format-block-and-child
-         block-uuid
-         (when-let [block-template (:block-template state)]
-           (str/fmt block-template (select-keys state block-attrs)))
-         (when (and append-child-block? (= child-block-format :definition)) 
-           definition)))
-      (devlog "action: default")))
+    (let [semantics (-> state :option :semantics)]
+      (devlog "Handle semantics:" semantics)
+      (case semantics
+        :website (write-block! state block-uuid (:meta-edn state))
+        :api     (write-block! state block-uuid (:api-edn state))
+        :word
+        (p/let [{:keys [token option]} state
+                {:keys [append-child-block? child-block-format]} option
+                url      (str config/dictionary-api-base token)
+                ;; fetch-api resolves to {:error ...} rather than rejecting, so
+                ;; the old p/then-identity / p/catch-log wrapper was dead code.
+                api-json (ls/fetch-api url nil)
+                api-edn  (u/ednize api-json)
+                api-err  (ls/api-error api-edn)
+                definition (when-not api-err (define/fmt-definition api-edn))]
+          (devlog "definition:" definition)
+          ;; dictionaryapi.dev is community-run with no SLA, and returns 404 for
+          ;; an unknown word. Say so rather than silently writing nothing.
+          (when api-err
+            (ls/show-msg (str "URL+: no definition for \"" token "\" (" api-err ")")))
+          (ls/format-block-and-child
+           block-uuid
+           (u/safe-fmt (:block-template state) (select-keys state block-attrs))
+           (when (and append-child-block? (= child-block-format :definition))
+             definition)))
+        (devlog "action: default"))))
   (js/logseq.hideMainUI))
 
 (rum/defc plugin-panel < rum/reactive []

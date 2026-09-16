@@ -44,16 +44,29 @@
                  (devlog "getLinkPreview failed:" err)
                  nil))))
 
-(defn handle-slash-cmd [{:keys [type mode block child]
-                         :or   {mode :template}}]
+(defn- editing-context
+  "Resolve the current editing context: the block being edited and the last
+  token of its content.
+
+  `:block-uuid` is nil when nothing is being edited - `getEditingBlockContent`
+  resolves to null there, which used to reach a regex and throw. Shared by the
+  slash commands and the inspector, which carried identical preambles."
+  []
   (p/let [current-block (ls/get-current-block)
           block-content (ls/get-editing-block-content)]
-    (let [block-uuid (some-> current-block (aget "uuid"))
-          [all-but-last, last-token] (when (string? block-content)
-                                       (else-and-last block-content))]
+    (let [[before-token token] (when (string? block-content)
+                                 (else-and-last block-content))]
+      {:block-uuid    (some-> current-block (aget "uuid"))
+       :block-content block-content
+       :before-token  before-token
+       :token         token})))
+
+(defn handle-slash-cmd [{:keys [type mode block child]
+                         :or   {mode :template}}]
+  (p/let [{:keys [block-uuid token] :as ctx} (editing-context)]
+    (let [all-but-last (:before-token ctx)
+          last-token   token]
       (cond
-        ;; `getEditingBlockContent` resolves to null when nothing is being
-        ;; edited; the old code fed that straight into a regex and threw.
         (not block-uuid)
         (ls/show-msg "URL+: no block is being edited.")
 
@@ -127,11 +140,10 @@
 (defn show-inspector-ui []
   (devlog "Inspector mode ...")
   (js/logseq.showMainUI)
-  (p/let [current-block (ls/get-current-block)
-          block-content (ls/get-editing-block-content)]
-    (let [block-uuid (some-> current-block (aget "uuid"))
-          [block-before-token, last-token] (when (string? block-content)
-                                             (else-and-last block-content))]
+  (p/let [{:keys [block-uuid block-content token]
+           :as ctx} (editing-context)]
+    (let [block-before-token (:before-token ctx)
+          last-token         token]
       (if-not block-uuid
         (ls/show-msg "URL+: no block is being edited.")
         (p/let [[maybe-label, token-url] (if (str/blank? last-token)

@@ -1,6 +1,6 @@
 (ns util-spec
   (:require
-   [cljs.test :refer [deftest is are]]
+   [cljs.test :refer [deftest is are testing]]
    [util :as u]))
 
 (deftest utils
@@ -73,6 +73,14 @@
 
     ;; Not a URL at all - returned unchanged rather than throwing.
     "just-a-word" "just-a-word"))
+
+(deftest safe-fmt
+  (is (= "hello world" (u/safe-fmt "hello %(who)s" {:who "world"})))
+  (testing "a half-typed or malformed template must not throw - the inspector
+            re-renders it on every keystroke"
+    (is (string? (u/safe-fmt "broken %(" {:who "world"})))
+    (is (string? (u/safe-fmt "unknown %(nope)s" {:who "world"})))
+    (is (string? (u/safe-fmt nil {})))))
 
 (deftest decode-html-content
   (are [in out] (= (u/decode-html-content in) out)

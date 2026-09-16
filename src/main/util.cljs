@@ -108,19 +108,37 @@
               (.-href u))
           url)))))
 
+(def ^:private md-link-re
+  ;; Anchored and greedy so a URL containing parentheses is captured whole -
+  ;; e.g. [Dog](https://en.wikipedia.org/wiki/Dog_(disambiguation)). The
+  ;; previous unanchored, lazy pattern stopped at the first ")", truncating the
+  ;; URL and leaving a stray bracket in the block. Anchoring is safe because
+  ;; callers pass a single token from `else-and-last`, not a whole block.
+  #"^\[(.*)\]\((.*)\)$")
+
 (defn str->md-link
-  "Parse a string and return a map of :label & :link."
+  "Parse a markdown link into {:label ... :link ...}, or nil if `s` is not one."
   [s]
-  (some->> (str/trim s)
-           (re-find #"\[(.*?)\]\((.*?)\)")
-           rest
-           (#(-> {:label (first %) :link (second %)}))))
+  (when (string? s)
+    (when-let [[_ label link] (re-find md-link-re (str/trim s))]
+      {:label label :link link})))
 
 (defn md-link->str [{:keys [label link]}]
   (str/format "[%s](%s)" label link))
 
 (defn md-link? [s]
   (some? (:link (str->md-link s))))
+
+(defn safe-fmt
+  "Format `template` with `data`, returning a marker instead of throwing.
+
+  Inspector templates are free text re-rendered on every keystroke, so a
+  half-typed `%(...)s` or an unknown key must not blow up the Rum render."
+  [template data]
+  (try
+    (str/fmt (or template "") data)
+    (catch :default e
+      (str "<template error: " (or (.-message e) e) ">"))))
 
 (defn md-inline-escape
   "Make fetched remote text safe to embed in a Logseq block.

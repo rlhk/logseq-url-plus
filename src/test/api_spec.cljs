@@ -26,4 +26,10 @@
   (is (=  [nil "https://face.com"]
           (api/md-link->label-and-url "https://face.com")))
   (is (=  ["nice face" "anything"]
-          (api/md-link->label-and-url "[nice face](anything)"))))
+          (api/md-link->label-and-url "[nice face](anything)")))
+  ;; A URL containing parentheses must be captured whole; the old lazy pattern
+  ;; stopped at the first ")" and left a stray bracket behind.
+  (is (=  ["Dog" "https://en.wikipedia.org/wiki/Dog_(disambiguation)"]
+          (api/md-link->label-and-url
+           "[Dog](https://en.wikipedia.org/wiki/Dog_(disambiguation))")))
+  (is (=  [nil nil] (api/md-link->label-and-url nil))))
