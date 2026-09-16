@@ -1,10 +1,10 @@
 {:source-paths ["src/dev" "src/main" "src/test"]
  :dependencies
  [[binaryage/devtools "1.0.7"] 
-  [djblue/portal "0.51.0"]
-  [funcool/promesa "11.0.678"]
-  [medley "1.4.0"]
-  [funcool/cuerdas "2023.11.09-407"]
+  [djblue/portal "0.67.2"]
+  [funcool/promesa "12.0.1"]
+  [dev.weavejester/medley "1.10.0"]
+  [funcool/cuerdas "2026.415"]
   [rum "0.12.11"]]
  :dev-http {8080 "dist"}
  :nrepl {:port 8702
@@ -19,11 +19,10 @@
  {:plugin {:target :browser
            :module-loader true
            :output-dir "dist"
-           :modules  {:index {:init-fn core/init}}
-           :build-hooks [(portal.shadow.remote/hook)]
+           :modules  {:index {:init-fn entry/init}}
            :devtools {:preloads [devtools.preload
                                  portal.setup]
-                      :after-load core/reload
+                      :after-load entry/reload
                       :repl-pprint true
                       :watch-dir "dist"} ; Doesn't work for Logseq dev mode. Have to reload plugin.
            :dev {}
@@ -32,4 +31,8 @@
          :output-to "out/node-test.js"
          :ns-regexp "-spec$"
          :autorun   true
+         ;; util/devlog is gated on goog.DEBUG. Left on, every test run prints
+         ;; the plugin's internal trace - including the deliberate fetch
+         ;; failures - burying the actual test results under ~25 lines of noise.
+         :closure-defines {goog.DEBUG false}
          :devtools  {:repl-pprint true}}}}

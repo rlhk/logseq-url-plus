@@ -486,11 +486,6 @@ hasown@^2.0.2:
   dependencies:
     function-bind "^1.1.2"
 
-help@^3.0.2:
-  version "3.0.2"
-  resolved "https://registry.npmjs.org/help/-/help-3.0.2.tgz"
-  integrity sha512-jDd0MU+9xzvOQRC6CIzdjvb+agCvpzQY/Fp11quDnugDO4QQzh134EsLkRQMvFIJBleFkvnXagHFm4MTefkkpA==
-
 htmlparser2@^8.0.1:
   version "8.0.1"
   resolved "https://registry.npmjs.org/htmlparser2/-/htmlparser2-8.0.1.tgz"

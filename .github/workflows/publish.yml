@@ -6,47 +6,66 @@ on:
   push:
     tags:
       - "*.*.*"
+
+# Required by the release step; nothing else needs write access.
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v7
       - name: Prepare NodeJS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: '18'
+          # Node 18 went end-of-life in April 2025.
+          node-version: '22'
+          cache: 'yarn'
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'zulu'
+      - name: Cache Maven dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+          key: ${{ runner.os }}-m2-${{ hashFiles('shadow-cljs.edn') }}
+          restore-keys: ${{ runner.os }}-m2-
       - name: Prepare Clojure Tools
-        uses: DeLaGuardo/setup-clojure@13.2
+        uses: DeLaGuardo/setup-clojure@13.7.0
         with: 
           bb: latest
+          clj-kondo: latest
       - name: Build Code
         run: |
-          npm install -g yarn
-          bb build
+          yarn install --frozen-lockfile
+          # `bb ci` rather than lint/test/build spelled out: it also runs
+          # check-css, which this workflow was skipping, so a dead daisyUI
+          # class could ship in a release that CI on the PR had rejected.
+          bb ci
           mkdir ${{ env.PLUGIN_NAME }}
-          cp package.json README.md demo.gif inspector-ui.png ${{ env.PLUGIN_NAME }}
+          # Documentation images are referenced from raw.githubusercontent.com,
+          # so they no longer need to ship inside the plugin zip.
+          cp package.json README.md ${{ env.PLUGIN_NAME }}
           mv dist ${{ env.PLUGIN_NAME }}
           zip -r ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip ${{ env.PLUGIN_NAME }}
           ls
-      - name: Create Release
-        uses: ncipollo/release-action@v1.12.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ github.ref }}
-        with:
-          allowUpdates: true
-          draft: false
-          prerelease: false
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+      # A single action creates the release and uploads its assets; previously
+      # ncipollo/release-action and softprops/action-gh-release both ran.
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          draft: false
+          prerelease: false
           files: |
             package.json
             ${{ env.PLUGIN_NAME }}-${{ github.ref_name }}.zip

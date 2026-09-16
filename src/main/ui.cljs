@@ -12,7 +12,7 @@
 (defn data-table 
   ([data] (data-table nil data))
   ([caption data]
-   [:table.table.table-compact.w-full
+   [:table.table.table-xs.w-full
     (when caption 
       [:caption.p-1.text-sm.text-left.font-semibold.text-gray-900 caption])
     (cond 
@@ -39,13 +39,14 @@
 
 (rum/defc token-input [t]
   [:.form-control
-   [:label.input-group.input-group-xs
-    [:span.font-semibold "Token"]
-    [:input.input.input-bordered.input-xs 
+   ;; input-group / input-group-xs were removed in daisyUI 4; plain flex
+   ;; utilities give the same row without depending on component semantics.
+   [:label.flex.items-center.gap-2.w-full
+    [:span.text-xs.font-semibold.whitespace-nowrap "Token"]
+    [:input.input.input-bordered.input-xs.w-full
      {:type "text"
       :read-only true
       :placeholder (when (str/empty? t) "No token detected")
-      :style {:width "100%"}
       :default-value t}]]])
 
 (rum/defc block-attrs-view [state]
@@ -106,8 +107,8 @@
    "▶️ "
    (case template-key
      :block-template
-     (str/fmt (get state template-key "")
-              (merge (select-keys state block-attrs) (get state :meta-edn)))
+     (u/safe-fmt (get state template-key "")
+                 (merge (select-keys state block-attrs) (get state :meta-edn)))
      :child-template 
      (str/fmt "NOTE: Child block will render metadata/data as: <%s>" 
           (get config/child-block-options (-> state :option :child-block-format)))
@@ -151,7 +152,7 @@
 (rum/defc word-view [state]
   (let [token (:token state)]
     [:.overflow-x-auto.max-h-60
-     [:table.table.table-compact.w-full
+     [:table.table.table-xs.w-full
       [:tbody
        [:tr [:td
              (cond 
@@ -163,9 +164,11 @@
   [{:keys [token option api-edn meta-edn api-record-count]} all-semantics]
   (let [{:keys [semantics]} option
         issue-indicator [:.ml-2 "😓"]]
-    [:.tabs
+    ;; daisyUI 4 puts the size and style modifiers on the container and names
+    ;; them tabs-*; tab-sm / tab-lifted are daisyUI 2 names and no longer exist.
+    [:.tabs.tabs-lifted.tabs-sm
      (for [[k desc] all-semantics]
-       [:.tab.tab-sm.tab-lifted.space-x-1
+       [:.tab.space-x-1
         {:key k
          :class (when (= semantics k) "tab-active")
          :on-click #(swap! plugin-state assoc-in [:option :semantics] k)}
@@ -181,44 +184,52 @@
                    (or (u/http? token), (u/md-link? token)))
           issue-indicator)])]))
 
+(defn- write-block!
+  "Apply the block template and optional child block, then write both.
+
+  The :website and :api paths differ only in which state key feeds the
+  template and the child block, so they share this."
+  [state block-uuid data]
+  (let [{:keys [append-child-block? child-block-format]} (:option state)]
+    (ls/format-block-and-child
+     block-uuid
+     (u/safe-fmt (:block-template state)
+                 (merge (select-keys state block-attrs) data))
+     (when append-child-block?
+       (md-data-block data child-block-format)))))
+
 (defn handle-action [state]
   (when-let [block-uuid (-> state :block :uuid)]
-    (case (-> state :option :semantics)
-      :website
-      (do
-        (devlog "Handle semantics: :website")
-        (ls/format-block-and-child
-         block-uuid
-         (when-let [block-template (:block-template state)]
-           (str/fmt block-template (merge (select-keys state block-attrs) (:meta-edn state))))
-         (let [{:keys [append-child-block? child-block-format]} (:option state)]
-           (when append-child-block? (md-data-block (:meta-edn state) child-block-format)))))
-      :api
-      (do
-        (devlog "Handle semantics: :api") 
-        (ls/format-block-and-child
-         block-uuid
-         (when-let [block-template (:block-template state)]
-           (str/fmt block-template (merge (select-keys state block-attrs) (:api-edn state))))
-         (let [{:keys [append-child-block? child-block-format]} (:option state)]
-           (when append-child-block? (md-data-block (:api-edn state) child-block-format)))))
-      :word
-      (p/let [{:keys [token option]} state
-              {:keys [append-child-block? child-block-format]} option
-              url      (str "https://api.dictionaryapi.dev/api/v2/entries/en/" token)
-              api-json (-> (ls/fetch-api url nil)
-                           (p/then   #(-> %))
-                           (p/catch  #(js/console.log %)))
-              definition (-> api-json u/ednize define/fmt-definition)]
-        (devlog "Handle semantics: :word")
-        (devlog "definition:" definition)
-        (ls/format-block-and-child
-         block-uuid
-         (when-let [block-template (:block-template state)]
-           (str/fmt block-template (select-keys state block-attrs)))
-         (when (and append-child-block? (= child-block-format :definition)) 
-           definition)))
-      (devlog "action: default")))
+    (let [semantics (-> state :option :semantics)]
+      (devlog "Handle semantics:" semantics)
+      (case semantics
+        :website (write-block! state block-uuid (:meta-edn state))
+        :api     (write-block! state block-uuid (:api-edn state))
+        :word
+        (p/let [{:keys [token option]} state
+                {:keys [append-child-block? child-block-format]} option
+                url      (str config/dictionary-api-base token)
+                ;; fetch-api resolves to {:error ...} rather than rejecting, so
+                ;; the old p/then-identity / p/catch-log wrapper was dead code.
+                api-json (ls/fetch-api url nil)
+                api-edn  (u/ednize api-json)
+                api-err  (ls/api-error api-edn)
+                definition (when-not api-err (define/fmt-definition api-edn))]
+          (devlog "definition:" definition)
+          ;; dictionaryapi.dev is community-run with no SLA, and returns 404 for
+          ;; an unknown word. Say so rather than silently writing nothing.
+          (when api-err
+            (ls/show-msg
+             (if (= 404 (:status api-edn))
+               (str "URL+: no definition found for \"" token "\"")
+               (str "URL+: dictionary service unavailable"
+                    (when-let [st (:status api-edn)] (str " (HTTP " st ")"))))))
+          (ls/format-block-and-child
+           block-uuid
+           (u/safe-fmt (:block-template state) (select-keys state block-attrs))
+           (when (and append-child-block? (= child-block-format :definition))
+             definition)))
+        (devlog "action: default"))))
   (js/logseq.hideMainUI))
 
 (rum/defc plugin-panel < rum/reactive []

@@ -1,6 +1,6 @@
 (ns feat.define-spec
   (:require
-    [cljs.test :refer [deftest is are testing]]
+    [cljs.test :refer [deftest is]]
     [feat.define :as d]))
 
 (def sample-word-1
