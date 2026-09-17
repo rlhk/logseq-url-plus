@@ -25,6 +25,15 @@ pom.xml.asc
 .hgignore
 .hg/
 
+# Local agent and editor tooling. The .claude/skills entries are absolute
+# symlinks to paths on one machine, and .cursor/rules is generated.
+.claude/
+.cursor/
+
+# PAS local config (mode 0600) and its timestamped backups
+.pas.yaml
+.pas-*.yaml
+
 dist
 out
 secrets
